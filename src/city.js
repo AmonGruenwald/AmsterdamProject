@@ -128,6 +128,56 @@ function neonTexture(text, color) {
   return tex;
 }
 
+// lamp-head glow sprites, collected so main.js can fade them in at night
+// (and down again when the camera gets too close — no lens-filling suns)
+export const LAMP_GLOWS = []; // sprite refs
+
+let warmGlowTex = null;
+function warmGlowTexture() {
+  if (warmGlowTex) return warmGlowTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,214,150,0.95)');
+  grad.addColorStop(0.4, 'rgba(255,180,90,0.4)');
+  grad.addColorStop(1, 'rgba(255,160,60,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  warmGlowTex = new THREE.CanvasTexture(c);
+  return warmGlowTex;
+}
+
+let pavingTex = null;
+function pavingTexture() {
+  if (pavingTex) return pavingTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#514c46';
+  g.fillRect(0, 0, 256, 256);
+  // klinker bricks in a running bond, with tonal variation
+  const bw = 32, bh = 16;
+  for (let row = 0; row < 256 / bh; row++) {
+    const off = (row % 2) * (bw / 2);
+    for (let col = -1; col < 256 / bw + 1; col++) {
+      const x = col * bw + off;
+      const v = 68 + Math.floor(Math.random() * 22);
+      g.fillStyle = `rgb(${v + 12}, ${v + 4}, ${v - 4})`;
+      g.fillRect(x + 1, row * bh + 1, bw - 2, bh - 2);
+    }
+  }
+  g.fillStyle = 'rgba(0,0,0,0.18)';
+  for (let i = 0; i < 300; i++) {
+    g.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+  }
+  pavingTex = new THREE.CanvasTexture(c);
+  pavingTex.wrapS = pavingTex.wrapT = THREE.RepeatWrapping;
+  pavingTex.repeat.set(90, 90);
+  pavingTex.colorSpace = THREE.SRGBColorSpace;
+  return pavingTex;
+}
+
 let glowTex = null;
 function glowTexture() {
   if (glowTex) return glowTex;
@@ -163,6 +213,8 @@ function makeHouse(rng, width, depth, redlight = false, koffie = false) {
   const mats = [bodyMat, bodyMat, bodyMat, bodyMat, faceMat, bodyMat];
   const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), mats);
   body.position.y = height / 2;
+  body.castShadow = true;
+  body.receiveShadow = true;
   group.add(body);
 
   // gable: stepped (trapgevel) or pointed
@@ -259,10 +311,10 @@ export function buildCity(scene, rng) {
   const redlightFronts = []; // {x, z, n} facade positions in De Wallen (n = outward normal sign on Z)
   const koffieshopFronts = []; // {x, z, n} inner-city koffieshop doors
 
-  // Ground: brick-toned pavement
+  // Ground: klinker-brick pavement
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(W.size, W.size),
-    new THREE.MeshLambertMaterial({ color: '#4e4a45' })
+    new THREE.MeshLambertMaterial({ map: pavingTexture() })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.02;
@@ -286,12 +338,15 @@ export function buildCity(scene, rng) {
     scene.add(road);
   }
 
-  // Canals: sunken water + quay walls
-  const waterMat = new THREE.MeshLambertMaterial({ color: '#1d3a35', transparent: true, opacity: 0.92 });
+  // Canals: sunken water (specular, gently rippled by main.js) + quay walls
+  const waterMat = new THREE.MeshPhongMaterial({
+    color: '#16332f', specular: '#9db8c8', shininess: 110,
+    transparent: true, opacity: 0.93,
+  });
   const quayMat = new THREE.MeshLambertMaterial({ color: '#3a3631' });
   const waters = [];
   for (const cz of W.canalZ) {
-    const water = new THREE.Mesh(new THREE.PlaneGeometry(W.size, W.canalHalf * 2), waterMat);
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(W.size, W.canalHalf * 2, 110, 6), waterMat);
     water.rotation.x = -Math.PI / 2;
     water.position.set(0, -0.9, cz);
     scene.add(water);
@@ -365,6 +420,7 @@ export function buildCity(scene, rng) {
           const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(2.2 + rng(), 1), leafMat);
           crown.position.y = 4.6;
           crown.scale.y = 1.25;
+          trunk.castShadow = crown.castShadow = true;
           tree.add(trunk, crown);
           tree.position.set(x + rng() * 3, 0, z);
           scene.add(tree);
@@ -378,7 +434,14 @@ export function buildCity(scene, rng) {
             new THREE.MeshLambertMaterial({ color: '#ffd9a0', emissive: '#c98c3a', emissiveIntensity: 0.6 })
           );
           head.position.y = 4.6;
-          lamp.add(pole, head);
+          const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: warmGlowTexture(), blending: THREE.AdditiveBlending,
+            depthWrite: false, transparent: true, opacity: 0,
+          }));
+          halo.scale.set(1.8, 1.8, 1);
+          halo.position.y = 4.6;
+          LAMP_GLOWS.push(halo);
+          lamp.add(pole, head, halo);
           lamp.position.set(x, 0, z);
           scene.add(lamp);
         }

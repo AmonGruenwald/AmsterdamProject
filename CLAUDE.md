@@ -59,7 +59,14 @@ the README only hints at 1637).
   strong reason not to — the project is plain ES modules loaded via an import map.
 - Three.js is **vendored** at `vendor/three.module.js` (r160) so the game runs
   fully offline with no CDN dependency. The import map in `index.html` maps
-  `three` to it. Don't reintroduce CDN imports.
+  `three` to it. Don't reintroduce CDN imports. The postprocessing chain
+  (`vendor/jsm/` — EffectComposer, UnrealBloom, OutputPass) is vendored from
+  the same three.js release; if you ever bump the three version, re-fetch
+  `vendor/jsm/` from the matching release too.
+- Rendering pipeline: ACES tone mapping + bloom via `composer.render()` in
+  `main.js` — if you add a bright emissive/additive material, check it at
+  night; anything above the 0.85 luminance threshold blooms. Lamp halos fade
+  with camera distance (`LAMP_GLOWS` in city.js) so glows never fill the lens.
 
 ## Running it
 

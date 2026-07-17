@@ -1,6 +1,10 @@
 // Amsterdam Simulator — entry point and game loop.
 import * as THREE from 'three';
-import { buildCity, inRedLight, NEON_SIGN_MATS } from './city.js';
+import { EffectComposer } from '../vendor/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from '../vendor/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from '../vendor/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from '../vendor/jsm/postprocessing/OutputPass.js';
+import { buildCity, inRedLight, NEON_SIGN_MATS, LAMP_GLOWS } from './city.js';
 import { Transit } from './transit.js';
 import { buildCuisine, Survival } from './cuisine.js';
 import { Wallen } from './wallen.js';
@@ -35,20 +39,37 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
 document.getElementById('app').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 600);
 camera.position.set(0, 5, 20);
 
+// post: render -> bloom (for the neon) -> tonemap/output, on an MSAA target
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(
+  innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: 4 }
+));
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.45, 0.5, 0.85);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
 });
 
 // --- world -------------------------------------------------------------------
-const { colliders, redlightFronts, koffieshopFronts } = buildCity(scene, rng);
+const { colliders, waters, redlightFronts, koffieshopFronts } = buildCity(scene, rng);
+
+// the bike's headlight, for after dark
+const headlight = new THREE.SpotLight('#ffe6c0', 0, 34, 0.55, 0.5, 1.2);
+headlight.visible = false;
+scene.add(headlight, headlight.target);
 const player = new Player(scene);
 const weather = new Weather(scene, rng);
 const day = new DayCycle(scene);
@@ -213,6 +234,7 @@ $('start-btn').addEventListener('click', () => {
 
 let wasInRedLight = false;
 let hudClock = 0;
+const _haloPos = new THREE.Vector3();
 // debug hook for headless verification (see CLAUDE.md)
 window.__ams = {
   player, day, transit, weather, survival, wallen, stalls, toilets, boating,
@@ -301,6 +323,24 @@ function frame() {
         ? 0.12                                    // brief dropout: authentic
         : 0.82 + 0.18 * Math.sin(elapsed * 9 + p);
     }
+
+    // dusk dressing: lamp halos fade in, the headlight switches on
+    const night = THREE.MathUtils.clamp(-day.elev * 4 + 0.15, 0, 1);
+    const camPos = camera.position;
+    for (const halo of LAMP_GLOWS) {
+      const d = halo.getWorldPosition(_haloPos).distanceTo(camPos);
+      halo.material.opacity = night * 0.5 * THREE.MathUtils.clamp((d - 5) / 9, 0, 1);
+    }
+    headlight.visible = night > 0.05 && !transit.riding && !boating.boating;
+    if (headlight.visible) {
+      headlight.intensity = night * 60;
+      headlight.position.set(player.pos.x, 1.6, player.pos.z);
+      headlight.target.position.set(
+        player.pos.x + Math.sin(player.heading) * 12,
+        0.3,
+        player.pos.z + Math.cos(player.heading) * 12
+      );
+    }
   } else {
     // idle orbit behind the splash screen
     const t = elapsed * 0.08;
@@ -312,6 +352,22 @@ function frame() {
     wallen.update(dt, elapsed, player);
   }
 
-  renderer.render(scene, camera);
+  // the canals ripple, always (skip the work while De Slang covers the screen)
+  if (!deslang.isOpen) {
+    for (const w of waters) {
+      const pos = w.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i), y = pos.getY(i);
+        pos.setZ(i,
+          Math.sin(x * 0.12 + elapsed * 1.1 + y * 0.5) * 0.055 +
+          Math.sin(x * 0.31 - elapsed * 1.7) * 0.03
+        );
+      }
+      pos.needsUpdate = true;
+      w.geometry.computeVertexNormals();
+    }
+  }
+
+  composer.render();
 }
 frame();

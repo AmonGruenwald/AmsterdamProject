@@ -142,6 +142,13 @@ a keyboard.
 - Procedural city generation from a seeded RNG (mulberry32): canal grid,
   ~250 canal houses with canvas-generated facades, stepped and pointed gables,
   and the traditional structural forward lean.
+- ACES filmic tone mapping with an UnrealBloom pass (vendored three.js
+  postprocessing on an MSAA render target) — the neon earns its glow.
+  Sun-cast soft shadows from every house and tree, klinker-brick pavement,
+  specular rippling canal water, stars and a moon after dark, warm lamp halos
+  that fade with distance, and a bike headlight that switches itself on at
+  dusk. All textures are canvas-generated at runtime; there are still zero
+  asset files.
 - Simple 2D AABB collision; arcade bike physics; chase camera.
 
 ## Repository layout
