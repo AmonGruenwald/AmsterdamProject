@@ -67,9 +67,12 @@ Want a different city? Add a seed: `http://localhost:8741/?seed=42`.
 | `SPACE` | ring bell (scatters nearby tourists) |
 | `E` | scan QR ticket / board bus / request stop |
 | `B` | rent / moor a canal sloop |
+| `H` | boat horn (while sailing — scatters tourists) |
 | `F` | eat at a snack cart |
 | `T` | use a krul urinoir |
-| `G` | duck into a koffieshop (the 2D game) |
+| `R` | flirt (charm a stranger; enough charm and a sweetheart rides with you) |
+| `J` | duck into a koffieshop for a moment (the screen has opinions) |
+| `G` | enter Koffieshop De Slang (the 2D game) |
 | `Q` | dance with a window in De Wallen |
 | `SHIFT` | sprint |
 | `C` | toggle chase / overview camera |
@@ -104,6 +107,15 @@ a keyboard.
   one metre water, one metre mud, one metre bicycles"), duck under the bridges
   ("Bruggetje! Everybody down"), deliver six facts, and moor at any dock to
   collect your tip — five stroopwafels, exact change. The ⛵ counter keeps score.
+  The sloop churns a foam wake as it makes way, and `H` sounds a deep boat horn
+  that reminds nearby tourists which side of the railing the water is on.
+- 💕 **Romance** — the wholesome, street-level kind. Press `R` as you ride and
+  pink hearts rise off the canal; charm enough strangers (the 💕 counter) and a
+  sweetheart in an unapologetically pink coat decides to ride with you, sharing
+  your bike lane and your problems.
+- 🌬️ **The koffieshop, briefly** — press `J` to duck into a koffieshop for
+  exactly one minute. The minute has opinions: the whole screen goes soft, warm,
+  and slightly to the left for a few seconds, then wears off. Everything is fine.
 - 🌹 **De Wallen** — the red light district glows along one canal: flickering
   neon, velvet windows, red lanterns, string lights — and it's inhabited.
   Dancers sway in front of the windows (and now twirl when you're watching),

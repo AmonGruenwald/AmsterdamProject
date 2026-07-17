@@ -3,6 +3,8 @@
 import * as THREE from 'three';
 import { WORLD, nearestCanal } from './city.js';
 
+const UP = new THREE.Vector3(0, 1, 0);
+
 const TOUR_LINES = [
   '🛥️ "On your left: houses that lean forward on purpose. On your right: a house that leans because it is tired."',
   '🛥️ "The canals are three metres deep: one metre water, one metre mud, one metre bicycles."',
@@ -127,6 +129,70 @@ export class Boating {
       scene.add(p);
       this.passengers.push(p);
     }
+
+    // foam wake: a pool of fading discs on the water behind the boat
+    this.wake = [];
+    const foamGeo = new THREE.CircleGeometry(0.5, 10);
+    for (let i = 0; i < 28; i++) {
+      const mat = new THREE.MeshBasicMaterial({ color: '#dff1f7', transparent: true, opacity: 0, depthWrite: false });
+      const m = new THREE.Mesh(foamGeo, mat);
+      m.rotation.x = -Math.PI / 2;
+      m.position.y = -0.46;
+      m.visible = false;
+      scene.add(m);
+      this.wake.push({ mesh: m, life: 0, max: 1.4 });
+    }
+    this._wnext = 0;
+    this.wakeTimer = 0;
+    this.audio = null; // lazy AudioContext for the horn
+  }
+
+  initAudio() {
+    if (this.audio) { if (this.audio.state === 'suspended') this.audio.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) this.audio = new AC();
+  }
+
+  // a deep, resonant boat horn — the universal Amsterdam signal for "I have right of way (I do not)"
+  horn() {
+    if (!this.boating) return;
+    this.initAudio();
+    const ac = this.audio;
+    if (ac) {
+      const t0 = ac.currentTime;
+      const master = ac.createGain();
+      master.gain.setValueAtTime(0.0001, t0);
+      master.gain.exponentialRampToValueAtTime(0.5, t0 + 0.08);
+      master.gain.setValueAtTime(0.5, t0 + 0.5);
+      master.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.95);
+      master.connect(ac.destination);
+      for (const f of [104, 156]) {
+        const o = ac.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(f, t0);
+        const g = ac.createGain(); g.gain.value = 0.5;
+        o.connect(g); g.connect(master);
+        o.start(t0); o.stop(t0 + 0.98);
+      }
+    }
+    // a proud puff of extra foam
+    if (this.boat) this.emitWake(6, 0.7);
+  }
+
+  emitWake(count, spread) {
+    const b = this.boat;
+    if (!b) return;
+    for (let i = 0; i < count; i++) {
+      const off = new THREE.Vector3((Math.random() * 2 - 1) * spread, 0, -3.2 - Math.random() * 0.6);
+      off.applyAxisAngle(UP, this.heading);
+      const p = this.wake[this._wnext];
+      this._wnext = (this._wnext + 1) % this.wake.length;
+      p.mesh.position.set(b.position.x + off.x, -0.46, b.position.z + off.z);
+      p.mesh.scale.setScalar(0.35 + Math.random() * 0.3);
+      p.mesh.material.opacity = 0.6;
+      p.mesh.visible = true;
+      p.life = p.max;
+    }
   }
 
   nearestDock(pos, radius = 5) {
@@ -206,6 +272,17 @@ export class Boating {
         d.boat.position.y = -0.55 + Math.sin(elapsed * 1.4 + d.x) * 0.05;
       }
     }
+
+    // age the foam wake (runs even after alighting, so it dissipates)
+    for (const p of this.wake) {
+      if (p.life > 0) {
+        p.life -= dt;
+        p.mesh.material.opacity = Math.max(0, p.life / p.max) * 0.6;
+        p.mesh.scale.multiplyScalar(1 + dt * 1.1);
+        if (p.life <= 0) p.mesh.visible = false;
+      }
+    }
+
     if (!this.boating) return;
 
     const k = player.keys;
@@ -245,6 +322,13 @@ export class Boating {
     b.rotation.y = this.heading;
     b.rotation.z = Math.sin(elapsed * 1.6) * 0.02 + (k.has('KeyA') ? 0.03 : 0) - (k.has('KeyD') ? 0.03 : 0);
     b.userData.flag.rotation.y = Math.sin(elapsed * 3) * 0.4;
+
+    // churn a foam wake behind the stern while making way
+    this.wakeTimer -= dt;
+    if (Math.abs(this.speed) > 0.5 && this.wakeTimer <= 0) {
+      this.wakeTimer = 0.07;
+      this.emitWake(1, 0.55);
+    }
 
     // seat the passengers
     this.passengers.forEach((p, i) => {

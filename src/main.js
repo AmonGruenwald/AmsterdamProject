@@ -9,6 +9,7 @@ import { Transit } from './transit.js';
 import { buildCuisine, Survival } from './cuisine.js';
 import { Wallen } from './wallen.js';
 import { Boating } from './boating.js';
+import { Romance } from './romance.js';
 import { Koffieshop, plantTulips } from './koffieshop.js';
 import { DeSlang } from './deslang.js';
 import { Player } from './player.js';
@@ -84,12 +85,13 @@ const tram = spawnTram(scene);
 const { stalls, toilets } = buildCuisine(scene, rng);
 const koffieshop = new Koffieshop(scene, colliders);
 const survival = new Survival();
+const romance = new Romance(scene);
 const wallen = new Wallen(scene, rng, redlightFronts);
 let transit, boating; // need `toast`, constructed below
 
 // --- HUD ----------------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
-const stats = { waffles: 0, bells: 0, splashes: 0, kisses: 0 };
+const stats = { waffles: 0, bells: 0, splashes: 0, kisses: 0, love: 0 };
 let msgTimer = null;
 function toast(text, ms = 2600) {
   const el = $('hud-msg');
@@ -222,6 +224,13 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyC') player.camMode = 1 - player.camMode;
   if (e.code === 'KeyE' && running && !boating.boating) transit.interact(player);
   if (e.code === 'KeyB' && running && !transit.riding) boating.interact(player);
+  if (e.code === 'KeyH' && running && boating.boating) {
+    boating.horn();
+    const scattered = ringBell(tourists, player.pos);
+    toast(scattered >= 1
+      ? `📣 TOOOOT — ${scattered} tourists remember which side the water is on.`
+      : '📣 TOOOOT. The sound rolls down the gracht. A heron does not flinch.');
+  }
   if (e.code === 'KeyF' && running && !transit.riding && !boating.boating) {
     const stall = survival.nearestStall(stalls, player.pos);
     if (stall) survival.eat(stall.food);
@@ -240,7 +249,22 @@ addEventListener('keydown', (e) => {
     if (survival.nearestToilet(toilets, player.pos)) survival.relieve();
     else if (survival.bowels > 70) toast('🚽 No krul in sight. Amsterdam tests you like this.');
   }
+  if (e.code === 'KeyR' && running && !transit.riding && !boating.boating) {
+    toast(romance.flirt(player), 3200);
+    stats.love = romance.meter;
+    $('s-love').textContent = romance.meter;
+  }
+  if (e.code === 'KeyJ' && running) smokeBlunt();
 });
+
+let stonedTimer = null;
+// The koffieshop, applied directly to the retina. Deadpan, non-graphic, wears off.
+function smokeBlunt() {
+  document.body.classList.add('stoned');
+  clearTimeout(stonedTimer);
+  stonedTimer = setTimeout(() => document.body.classList.remove('stoned'), 8000);
+  toast('🌬️ You duck into a koffieshop for exactly one minute. The minute has opinions. Everything is fine.', 4200);
+}
 
 // --- start & loop --------------------------------------------------------------
 let running = false;
@@ -259,7 +283,7 @@ const _haloPos = new THREE.Vector3();
 // debug hook for headless verification (see CLAUDE.md)
 window.__ams = {
   player, day, transit, weather, survival, wallen, stalls, toilets, boating,
-  koffieshop, deslang, stats,
+  koffieshop, deslang, romance, smokeBlunt, stats,
 };
 
 const clock = new THREE.Clock();
@@ -290,6 +314,7 @@ function frame() {
 
     survival.update(dt, player);
     wallen.update(dt, elapsed, player);
+    romance.update(dt, player, camera, elapsed);
 
     // survival HUD (throttled to ~4x/sec)
     hudClock -= dt;

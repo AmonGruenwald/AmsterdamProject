@@ -230,6 +230,27 @@
   }
   #verleid.sweet { border-color: #ffd36b; box-shadow: 0 0 18px rgba(255, 211, 107, .5); }
 
+  /* ---------------- Koffieshop haze: the screen, mildly editorialised ---------------- */
+  #haze {
+    position: fixed; inset: 0; z-index: 7; pointer-events: none; opacity: 0;
+    transition: opacity 1.4s ease; mix-blend-mode: screen;
+    background:
+      radial-gradient(ellipse at 50% 55%, rgba(120,60,170,0) 38%, rgba(90,30,130,.42) 100%),
+      radial-gradient(circle at 30% 30%, rgba(255,120,60,.12), rgba(255,120,60,0) 45%);
+  }
+  body.stoned #haze { opacity: 1; }
+  @keyframes woozy {
+    0%   { filter: blur(1.4px) saturate(1.55) hue-rotate(0deg) contrast(1.05); transform: scale(1.04); }
+    25%  { filter: blur(2.6px) saturate(1.9)  hue-rotate(22deg) contrast(1.1);  transform: scale(1.06) translate(7px,-5px) rotate(.5deg); }
+    50%  { filter: blur(2.0px) saturate(1.75) hue-rotate(-16deg) contrast(1.08); transform: scale(1.05) translate(-6px,5px) rotate(-.4deg); }
+    75%  { filter: blur(3.1px) saturate(2.05) hue-rotate(32deg) contrast(1.12); transform: scale(1.07) translate(5px,6px) rotate(.6deg); }
+    100% { filter: blur(1.4px) saturate(1.55) hue-rotate(0deg) contrast(1.05); transform: scale(1.04); }
+  }
+  body.stoned #app { animation: woozy 6s ease-in-out infinite; will-change: filter, transform; }
+  @media (prefers-reduced-motion: reduce) {
+    body.stoned #app { animation: none; filter: saturate(1.6) hue-rotate(18deg) blur(1.5px); }
+  }
+
   /* ---------------- Mobile / touch controls (3D simulator shell) ---------------- */
   #splash { overflow-y: auto; }
   #splash h1 { font-size: clamp(28px, 8vw, 42px); }
@@ -272,12 +293,14 @@
 </head>
 <body>
 <div id="app"></div>
+<div id="haze"></div>
 
 <div class="hud" id="hud-top">
   <div class="stat">🧇 <span id="s-waffles">0</span></div>
   <div class="stat">🔔 <span id="s-bells">0</span></div>
   <div class="stat">💦 <span id="s-splashes">0</span></div>
   <div class="stat">💋 <span id="s-kisses">0</span></div>
+  <div class="stat">💕 <span id="s-love">0</span></div>
   <div class="stat">⛵ <span id="s-tours">0</span></div>
   <div class="stat">🍟 <span id="s-hunger">80%</span></div>
   <div class="stat">🚽 <span id="s-bowels">10%</span></div>
@@ -390,8 +413,11 @@
     <button class="t-btn toggle" data-code="ShiftLeft" aria-label="Sprint">⚡</button>
     <button class="t-btn tap"    data-code="KeyG"      aria-label="Koffieshop">☕</button>
     <button class="t-btn tap"    data-code="KeyQ"      aria-label="Dance">💃</button>
+    <button class="t-btn tap"    data-code="KeyR"      aria-label="Flirt">💘</button>
+    <button class="t-btn tap"    data-code="KeyJ"      aria-label="Smoke">🌬️</button>
     <button class="t-btn tap"    data-code="KeyE"      aria-label="Bus">🚌</button>
     <button class="t-btn tap"    data-code="KeyB"      aria-label="Boat">⛵</button>
+    <button class="t-btn tap"    data-code="KeyH"      aria-label="Boat horn">📣</button>
     <button class="t-btn tap"    data-code="KeyF"      aria-label="Eat">🍟</button>
     <button class="t-btn tap"    data-code="KeyT"      aria-label="Toilet">🚽</button>
     <button class="t-btn tap"    data-code="KeyC"      aria-label="Camera">🎥</button>
@@ -410,8 +436,8 @@
      philosophical, duck into <b style="color:#39d353">Koffieshop De Slang</b>,
      where the city folds into an older, flatter Amsterdam.
      Mind the canals — the water accepts all bikes, and it will accept yours.</p>
-  <p class="keys kbd-only">W/S ride &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; SPACE bell &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; E bus &nbsp;·&nbsp; B boat &nbsp;·&nbsp; F eat &nbsp;·&nbsp; T toilet &nbsp;·&nbsp; G koffieshop &nbsp;·&nbsp; Q dance &nbsp;·&nbsp; C camera</p>
-  <p class="keys touch-only">On-screen controls appear once you start: ▲ pedal, ▼ brake, ◀ ▶ steer, plus 🔔⚡☕💃🚌⛵🍟🚽🎥.</p>
+  <p class="keys kbd-only">W/S ride &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; SPACE bell &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; E bus &nbsp;·&nbsp; B boat &nbsp;·&nbsp; H horn &nbsp;·&nbsp; F eat &nbsp;·&nbsp; T toilet &nbsp;·&nbsp; R flirt &nbsp;·&nbsp; J smoke &nbsp;·&nbsp; G koffieshop &nbsp;·&nbsp; Q dance &nbsp;·&nbsp; C camera</p>
+  <p class="keys touch-only">On-screen controls appear once you start: ▲ pedal, ▼ brake, ◀ ▶ steer, plus buttons for bell, sprint, flirt 💘, smoke 🌬️, bus, boat, horn 📣, eat, toilet & camera.</p>
   <button id="start-btn">Start cycling</button>
   <p class="keys"><a href="./index.html" style="color:#ff8c42">🐍 Or play Amsterdam Snake →</a></p>
 </div>
