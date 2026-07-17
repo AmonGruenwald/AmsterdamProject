@@ -71,11 +71,16 @@ Want a different city? Add a seed: `http://localhost:8741/?seed=42`.
 | `T` | use a krul urinoir |
 | `G` | duck into a koffieshop (the 2D game) |
 | `Q` | dance with a window in De Wallen |
+| `SHIFT` | sprint |
+| `C` | toggle chase / overview camera |
 
 Inside De Slang: arrows/WASD steer, `P` pause, `M` mute, `1`–`5` buy in the
 shop, `ESC` leave. Swipe or D-pad on touch screens.
-| `SHIFT` | sprint |
-| `C` | toggle chase / overview camera |
+
+On phones, on-screen controls appear automatically in **both** games: a steer
+pad and pedal/brake for your thumbs, plus buttons for the bell, sprint,
+koffieshop, dance, and every other action — the whole thing is playable without
+a keyboard.
 
 ## Gameplay
 

@@ -2,10 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0e14" />
 <title>Amsterdam Simulator</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0e14; font-family: "Segoe UI", system-ui, sans-serif; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0e14; font-family: "Segoe UI", system-ui, sans-serif;
+    overscroll-behavior: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
   #app { position: fixed; inset: 0; }
   canvas { display: block; }
 
@@ -203,6 +205,45 @@
   }
   .dans-key.hit { background: rgba(57, 211, 83, .45); border-color: #39d353; color: #d9ffe3; }
   .dans-key.miss { opacity: .35; }
+
+  /* ---------------- Mobile / touch controls (3D simulator shell) ---------------- */
+  #splash { overflow-y: auto; }
+  #splash h1 { font-size: clamp(28px, 8vw, 42px); }
+  #splash > p { font-size: clamp(13px, 3.6vw, 16px); }
+  .touch-only { display: none; }
+  body.touch .touch-only { display: block; }
+  body.touch .kbd-only { display: none; }
+
+  #touch { position: fixed; inset: 0; z-index: 8; display: none; }
+  body.touch.playing #touch { display: block; }
+  body.in-snake #touch { display: none !important; }   /* the snake back-room has its own pad */
+  #touch .t-btn {
+    position: absolute; pointer-events: auto;
+    display: flex; align-items: center; justify-content: center;
+    width: 60px; height: 60px; border-radius: 50%; line-height: 1;
+    background: rgba(20,26,38,.5); color: #fff; border: 1px solid rgba(255,255,255,.22);
+    font-size: 22px; touch-action: none; -webkit-touch-callout: none;
+    -webkit-user-select: none; user-select: none; backdrop-filter: blur(3px);
+    transition: background .08s, transform .08s;
+  }
+  #touch .t-btn:active, #touch .t-btn.on { background: rgba(255,140,66,.6); transform: scale(.95); }
+  #t-left  { left: 16px;  bottom: 24px; }
+  #t-right { left: 88px;  bottom: 24px; }
+  #t-gas   { right: 18px; bottom: 82px; width: 74px; height: 74px; font-size: 26px; }
+  #t-brake { right: 32px; bottom: 22px; width: 54px; height: 54px; }
+  #touch .t-actions {
+    position: absolute; left: 50%; bottom: 108px; transform: translateX(-50%);
+    display: flex; flex-wrap: wrap; gap: 9px; justify-content: center;
+    width: min(56vw, 300px); pointer-events: none;
+  }
+  #touch .t-actions .t-btn { position: static; width: 46px; height: 46px; font-size: 19px; }
+
+  @media (max-width: 720px) {
+    #hud-top { flex-wrap: wrap; justify-content: center; max-width: 96vw;
+      gap: 5px 10px; font-size: 11.5px; padding: 6px 10px; }
+  }
+  body.touch #hud-controls { top: 112px; bottom: auto; font-size: 11px; max-width: 92vw; text-align: center; }
+  body.touch #hud-msg { top: 190px; bottom: auto; font-size: 15px; max-width: 92vw; text-align: center; }
 </style>
 </head>
 <body>
@@ -307,6 +348,27 @@
 </div>
 <div class="hud" id="hud-controls">W/S ride · A/D steer · SPACE bell · E bus · B boat · F eat · T toilet · C camera</div>
 
+<!-- On-screen controls for touch devices; they synthesize the same key events.
+     Directional buttons emit Arrow codes so they drive the bike AND work in the
+     De Wallen dance-off. Hidden while the snake back-room is open. -->
+<div id="touch" aria-hidden="true">
+  <button class="t-btn hold" id="t-left"  data-code="ArrowLeft"  aria-label="Steer left">◀</button>
+  <button class="t-btn hold" id="t-right" data-code="ArrowRight" aria-label="Steer right">▶</button>
+  <button class="t-btn hold" id="t-gas"   data-code="ArrowUp"    aria-label="Pedal">▲</button>
+  <button class="t-btn hold" id="t-brake" data-code="ArrowDown"  aria-label="Brake / reverse">▼</button>
+  <div class="t-actions">
+    <button class="t-btn tap"    data-code="Space"     aria-label="Ring bell">🔔</button>
+    <button class="t-btn toggle" data-code="ShiftLeft" aria-label="Sprint">⚡</button>
+    <button class="t-btn tap"    data-code="KeyG"      aria-label="Koffieshop">☕</button>
+    <button class="t-btn tap"    data-code="KeyQ"      aria-label="Dance">💃</button>
+    <button class="t-btn tap"    data-code="KeyE"      aria-label="Bus">🚌</button>
+    <button class="t-btn tap"    data-code="KeyB"      aria-label="Boat">⛵</button>
+    <button class="t-btn tap"    data-code="KeyF"      aria-label="Eat">🍟</button>
+    <button class="t-btn tap"    data-code="KeyT"      aria-label="Toilet">🚽</button>
+    <button class="t-btn tap"    data-code="KeyC"      aria-label="Camera">🎥</button>
+  </div>
+</div>
+
 <div id="splash">
   <h1>🚲 Amsterdam <span>Simulator</span></h1>
   <p>Cycle the canal ring. Collect stroopwafels. Ring your bell at tourists
@@ -319,10 +381,69 @@
      philosophical, duck into <b style="color:#39d353">Koffieshop De Slang</b>,
      where the city folds into an older, flatter Amsterdam.
      Mind the canals — the water accepts all bikes, and it will accept yours.</p>
-  <p class="keys">W/S ride &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; SPACE bell &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; E bus &nbsp;·&nbsp; B boat &nbsp;·&nbsp; F eat &nbsp;·&nbsp; T toilet &nbsp;·&nbsp; G koffieshop &nbsp;·&nbsp; Q dance &nbsp;·&nbsp; C camera</p>
+  <p class="keys kbd-only">W/S ride &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; SPACE bell &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; E bus &nbsp;·&nbsp; B boat &nbsp;·&nbsp; F eat &nbsp;·&nbsp; T toilet &nbsp;·&nbsp; G koffieshop &nbsp;·&nbsp; Q dance &nbsp;·&nbsp; C camera</p>
+  <p class="keys touch-only">On-screen controls appear once you start: ▲ pedal, ▼ brake, ◀ ▶ steer, plus 🔔⚡☕💃🚌⛵🍟🚽🎥.</p>
   <button id="start-btn">Start cycling</button>
   <p class="keys"><a href="./index.html" style="color:#ff8c42">🐍 Or play Amsterdam Snake →</a></p>
 </div>
+
+<!-- Touch input bridge: on-screen buttons dispatch the same key events the
+     game already listens for, so touch works without changing the game logic. -->
+<script>
+(function () {
+  var isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  if (isTouch) document.body.classList.add('touch');
+
+  var startBtn = document.getElementById('start-btn');
+  if (startBtn) startBtn.addEventListener('click', function () { document.body.classList.add('playing'); });
+
+  // Hide the driving controls while the 2D snake back-room is open (it has its own pad).
+  var ds = document.getElementById('deslang');
+  if (ds && window.MutationObserver) {
+    new MutationObserver(function () {
+      document.body.classList.toggle('in-snake', ds.classList.contains('open'));
+    }).observe(ds, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  function fire(type, code) {
+    window.dispatchEvent(new KeyboardEvent(type, { code: code, key: code, bubbles: true, cancelable: true }));
+  }
+
+  var touch = document.getElementById('touch');
+  if (!touch) return;
+  touch.querySelectorAll('.t-btn').forEach(function (btn) {
+    var code = btn.dataset.code;
+    if (btn.classList.contains('hold')) {
+      var press = function (e) {
+        e.preventDefault();
+        if (btn.dataset.held) return;
+        btn.dataset.held = '1'; btn.classList.add('on'); fire('keydown', code);
+        try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+      };
+      var release = function () {
+        if (!btn.dataset.held) return;
+        delete btn.dataset.held; btn.classList.remove('on'); fire('keyup', code);
+      };
+      btn.addEventListener('pointerdown', press);
+      btn.addEventListener('pointerup', release);
+      btn.addEventListener('pointercancel', release);
+      btn.addEventListener('lostpointercapture', release);
+    } else if (btn.classList.contains('toggle')) {
+      btn.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        var on = btn.classList.toggle('on');
+        fire(on ? 'keydown' : 'keyup', code);
+      });
+    } else { // tap = single press
+      btn.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        btn.classList.add('on'); fire('keydown', code); fire('keyup', code);
+        setTimeout(function () { btn.classList.remove('on'); }, 130);
+      });
+    }
+  });
+})();
+</script>
 
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.js" } }
