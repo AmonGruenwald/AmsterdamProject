@@ -50,7 +50,24 @@
   .fx-espresso { color: #ffcf87; box-shadow: inset 0 0 0 1px rgba(255,180,80,.5); }
   .fx-cake { color: #ff9ff3; box-shadow: inset 0 0 0 1px rgba(255,120,220,.5); }
   .fx-ghost { color: #a9e7ff; box-shadow: inset 0 0 0 1px rgba(120,210,255,.5); }
+  .fx-combo { color: #ffd36b; box-shadow: inset 0 0 0 1px rgba(255,200,90,.6); }
+  .fx-tulip { color: #ff6fae; box-shadow: inset 0 0 0 1px rgba(255,110,175,.6); }
   #board-holder { position: relative; }
+  /* Toast notifications (stacked, top of the board) */
+  #toasts {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+    pointer-events: none; z-index: 6; width: max-content; max-width: 92%;
+  }
+  .toast {
+    background: rgba(10,14,22,.82); color: var(--ink); border: 1px solid rgba(255,255,255,.16);
+    padding: 7px 14px; border-radius: 999px; font-size: 13.5px; font-weight: 700;
+    text-align: center; box-shadow: 0 6px 18px rgba(0,0,0,.4);
+    animation: toastIn .25s ease-out, toastOut .4s ease-in forwards;
+    animation-delay: 0s, var(--hold, 1.8s);
+  }
+  @keyframes toastIn  { from { opacity: 0; transform: translateY(-8px) scale(.96); } to { opacity: 1; } }
+  @keyframes toastOut { to { opacity: 0; transform: translateY(-8px) scale(.96); } }
   canvas {
     display: block; border-radius: 14px; touch-action: none;
     background: #0e2036;
@@ -125,7 +142,7 @@
 <body>
 <div id="wrap">
   <div id="hud">
-    <div class="stat">🧇 <b id="s-score">0</b></div>
+    <div class="stat" id="secret-tap">🧇 <b id="s-score">0</b></div>
     <div class="stat">🏆 <b id="s-best">0</b></div>
     <div class="stat">⚡ <b id="s-speed">1</b></div>
     <button id="mute-btn" aria-label="Toggle sound">🔊</button>
@@ -134,6 +151,7 @@
 
   <div id="board-holder">
     <canvas id="board" width="480" height="480"></canvas>
+    <div id="toasts"></div>
     <button id="pause-btn" hidden>⏸ Pause</button>
 
     <div id="overlay">
@@ -181,11 +199,27 @@
   const elBest  = document.getElementById("s-best");
   const elSpeed = document.getElementById("s-speed");
   const fxBar = document.getElementById("fx-bar");
+  const toastsEl = document.getElementById("toasts");
 
   const BEST_KEY = "amsterdam-snake-best";
   const MUTE_KEY = "amsterdam-snake-muted";
   let best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0;
   elBest.textContent = best;
+
+  /* ---------------- Toasts + screen shake ---------------- */
+  function toast(text, hold = 1.8) {
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.style.setProperty("--hold", hold + "s");
+    el.textContent = text;
+    toastsEl.append(el);
+    setTimeout(() => el.remove(), (hold + 0.7) * 1000);
+    while (toastsEl.children.length > 3) toastsEl.firstChild.remove();
+  }
+  const shake = { t: 0, max: 1, mag: 0 };
+  function addShake(mag, dur = 0.35) {
+    if (mag >= shake.mag * (shake.t / (shake.max || 1))) { shake.mag = mag; shake.t = dur; shake.max = dur; }
+  }
 
   /* ---------------- Audio: procedural, no files ---------------- */
   const audio = { ctx: null, master: null, muted: localStorage.getItem(MUTE_KEY) === "1", noise: null };
@@ -233,11 +267,16 @@
     s.start(t0); s.stop(t0 + 0.5);
     beep(320, 0.4, "sine", 0.3, 90);
   }
-  const sEat   = () => beep(520, 0.09, "square", 0.35, 900);
+  const sEat   = (combo = 0) => beep(520 + Math.min(combo, 8) * 60, 0.09, "square", 0.35, 900 + Math.min(combo, 8) * 60);
+  const sGold  = () => { [784, 1047, 1319].forEach((f, i) => beep(f, 0.13, "triangle", 0.32, null, i * 0.05)); };
   const sShop  = () => { beep(880, 0.12, "sine", 0.3); beep(1320, 0.18, "sine", 0.25, null, 0.08); };
   const sBuy   = () => { beep(660, 0.09, "triangle", 0.35); beep(990, 0.12, "triangle", 0.3, null, 0.07); };
   const sPower = () => [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.12, "triangle", 0.28, null, i * 0.06));
   const sCrash = () => splash();
+  const sSecret = () => { // a little fanfare
+    [523, 659, 784, 1047, 1319, 1047, 1319, 1568].forEach((f, i) =>
+      beep(f, 0.16, "triangle", 0.3, null, i * 0.09));
+  };
 
   function toggleMute() {
     audio.muted = !audio.muted;
@@ -294,6 +333,8 @@
   /* ---------------- Game state ---------------- */
   let snake, dir, nextDir, food, coffeeshop, score, wallet, eaten, speed;
   let alive, running, paused, inShop, acc, lastT;
+  let combo, comboTimer;                 // eat-streak multiplier
+  let tulipMania = false;                // the hidden secret, once unlocked
   const fx = { espresso: 0, cake: 0, ghost: 0 }; // remaining seconds
 
   const flavour = [
@@ -330,6 +371,52 @@
     return { x: h.x * cell + cell / 2, y: h.y * cell + cell / 2 };
   }
 
+  // Secret shop item, unlocked only via the hidden code.
+  const TULIP = { emoji: "🌷", name: "Tulip Bulb", cost: 12, secret: true,
+    desc: "Speculative bubble: 2× points for 20s AND phase for 6s. It'll be fine.",
+    apply() {
+      fx.espresso = 20; fx.ghost = 6;
+      burst(headPx().x, headPx().y, { colors: ["#ff6fae","#ffd36b","#8affc1","#a29bfe","#ff8f8f"], n: 40, speed: 130, glow: true });
+      addShake(7, 0.4);
+      toast("🌷 The bubble will never burst");
+    } };
+
+  /* ---------------- The hidden secret: Tulip Mania ---------------- */
+  const KONAMI = ["ArrowUp","ArrowUp","ArrowDown","ArrowDown","ArrowLeft","ArrowRight","ArrowLeft","ArrowRight","b","a"];
+  let konami = 0;
+  function konamiKey(key) {
+    key = key.length === 1 ? key.toLowerCase() : key;
+    konami = (key === KONAMI[konami]) ? konami + 1 : (key === KONAMI[0] ? 1 : 0);
+    if (konami === KONAMI.length) { konami = 0; unlockSecret(); }
+  }
+  function unlockSecret() {
+    if (!tulipMania) {
+      tulipMania = true;
+      if (!ITEMS.some(it => it.secret)) ITEMS.push(TULIP);
+    }
+    initAudio(); sSecret();
+    toast("🌷🌷 TULIP MANIA UNLOCKED 🌷🌷", 3);
+    toast("Golden hour on the canals · secret item in the koffieshop", 3);
+    if (running && alive) {
+      wallet += 15; score += 15;
+      if (score > best) { best = score; localStorage.setItem(BEST_KEY, best); }
+      updateHud();
+    }
+    addShake(9, 0.6);
+    // tulip + wafel confetti rain across the board
+    const px = cell * GRID;
+    for (let i = 0; i < 90; i++) {
+      particles.push({
+        x: Math.random() * px, y: -Math.random() * px * 0.4,
+        vx: (Math.random() * 2 - 1) * 40, vy: 90 + Math.random() * 140,
+        life: 1.2 + Math.random() * 1.4, max: 2.6,
+        size: 2 + Math.random() * 3, grav: 60,
+        color: ["#ff6fae","#ffd36b","#8affc1","#a29bfe","#ffffff"][(Math.random() * 5) | 0],
+        glow: true,
+      });
+    }
+  }
+
   /* ---------------- Canvas sizing ---------------- */
   let cell = 24;
   function fitCanvas() {
@@ -349,10 +436,12 @@
     snake = [{x: 8, y: 10}, {x: 7, y: 10}, {x: 6, y: 10}];
     dir = {x: 1, y: 0}; nextDir = dir;
     score = 0; wallet = 0; eaten = 0; speed = 1;
+    combo = 0; comboTimer = 0;
     acc = 0; lastT = 0;
     alive = true; paused = false; inShop = false;
     coffeeshop = null;
     fx.espresso = fx.cake = fx.ghost = 0;
+    shake.t = 0; shake.mag = 0;
     particles = [];
     placeFood();
     updateHud();
@@ -374,7 +463,9 @@
     for (let i = 0; i < GRID * GRID; i++) if (!occ.has(i)) free.push(i);
     if (!free.length) { food = null; win(); return; }
     const i = free[(Math.random() * free.length) | 0];
-    food = { x: i % GRID, y: (i / GRID) | 0 };
+    // ~16% golden stroopwafel (worth 3×); a touch more common during Tulip Mania.
+    const golden = Math.random() < (tulipMania ? 0.28 : 0.16);
+    food = { x: i % GRID, y: (i / GRID) | 0, golden };
   }
   function placeCoffeeshop() {
     const free = freeCells();
@@ -388,11 +479,15 @@
     elBest.textContent = best;
     elSpeed.textContent = speed;
     const chips = [];
-    if (fx.espresso > 0) chips.push(`<span class="fx-chip fx-espresso">☕ 2× ${Math.ceil(fx.espresso)}s</span>`);
-    if (fx.cake > 0)     chips.push(`<span class="fx-chip fx-cake">🍰 slow ${Math.ceil(fx.cake)}s</span>`);
-    if (fx.ghost > 0)    chips.push(`<span class="fx-chip fx-ghost">👻 ${Math.ceil(fx.ghost)}s</span>`);
+    if (comboMult() > 1)  chips.push(`<span class="fx-chip fx-combo">🔥 ${comboMult()}× combo</span>`);
+    if (fx.espresso > 0)  chips.push(`<span class="fx-chip fx-espresso">☕ 2× ${Math.ceil(fx.espresso)}s</span>`);
+    if (fx.cake > 0)      chips.push(`<span class="fx-chip fx-cake">🍰 slow ${Math.ceil(fx.cake)}s</span>`);
+    if (fx.ghost > 0)     chips.push(`<span class="fx-chip fx-ghost">👻 ${Math.ceil(fx.ghost)}s</span>`);
+    if (tulipMania)       chips.push(`<span class="fx-chip fx-tulip">🌷 mania</span>`);
     fxBar.innerHTML = chips.join("");
   }
+  // Combo grows the multiplier: 3 eats → 2×, 6 → 3×, capped at 5×.
+  function comboMult() { return 1 + Math.min(4, Math.floor(combo / 3)); }
 
   function stepInterval() {
     let sps = 6 + Math.min(9, Math.floor(score / 3));
@@ -425,13 +520,24 @@
 
     snake.unshift(head);
 
+    // faint motion trail behind the head
+    const hp = { x: head.x * cell + cell / 2, y: head.y * cell + cell / 2 };
+    particles.push({ x: hp.x, y: hp.y, vx: -dir.x * 20, vy: -dir.y * 20,
+      life: 0.28, max: 0.28, size: cell * 0.12, grav: 0,
+      color: tulipMania ? "#ff9ff3" : "#ffbf69", glow: true });
+
     if (food && head.x === food.x && head.y === food.y) {
-      const gain = fx.espresso > 0 ? 2 : 1;
-      score += gain; wallet += gain; eaten++;
+      const golden = !!food.golden;
+      combo++; comboTimer = 2.4;
+      const base = (fx.espresso > 0 ? 2 : 1) * (golden ? 3 : 1) * comboMult();
+      score += base; wallet += base; eaten++;
       if (score > best) { best = score; localStorage.setItem(BEST_KEY, best); }
-      burst(food.x * cell + cell / 2, food.y * cell + cell / 2,
-        { colors: ["#d9a441","#ffbf69","#8a5a1e","#fff3d6"], n: 16, size: 3, glow: true });
-      sEat();
+      const cols = golden ? ["#ffe08a","#ffd23f","#fff6cf","#c9791f"]
+                          : ["#d9a441","#ffbf69","#8a5a1e","#fff3d6"];
+      burst(hp.x, hp.y, { colors: cols, n: golden ? 30 : 16, size: golden ? 4 : 3, speed: golden ? 130 : 90, glow: true });
+      if (golden) { sGold(); addShake(4, 0.3); toast(`✨ Golden stroopwafel · +${base}`, 1.3); }
+      else sEat(combo);
+      if (comboMult() >= 3 && combo % 3 === 0) toast(`🔥 ${comboMult()}× combo!`, 1.1);
       placeFood();
       if (eaten % 4 === 0 && !coffeeshop) placeCoffeeshop();
       updateHud();
@@ -458,6 +564,12 @@
       g.addColorStop(1, "rgba(255,230,120,.08)");
       ctx.fillStyle = g; ctx.fillRect(0, 0, px, px);
     }
+    // Tulip Mania golden-hour wash
+    if (tulipMania) {
+      const hue = (performance.now() / 40) % 360;
+      ctx.fillStyle = `hsla(${hue}, 80%, 60%, 0.05)`;
+      ctx.fillRect(0, 0, px, px);
+    }
     // grid
     ctx.strokeStyle = "rgba(255,255,255,.035)"; ctx.lineWidth = 1;
     for (let i = 1; i < GRID; i++) {
@@ -467,29 +579,51 @@
     // ambient glints
     for (const gl of glints) {
       const a = 0.12 + 0.12 * (0.5 + 0.5 * Math.sin(gl.ph));
-      ctx.fillStyle = `rgba(150,200,255,${a})`;
+      ctx.fillStyle = tulipMania ? `hsla(${(gl.ph * 40) % 360},80%,70%,${a})` : `rgba(150,200,255,${a})`;
       ctx.beginPath(); ctx.arc(gl.x * px, gl.y * px, gl.r, 0, 7); ctx.fill();
     }
 
+    // everything below the background shakes together
+    ctx.save();
+    if (shake.t > 0) {
+      const m = shake.mag * (shake.t / (shake.max || 1));
+      ctx.translate((Math.random() * 2 - 1) * m, (Math.random() * 2 - 1) * m);
+    }
     drawCoffeeshop();
     drawFood();
     drawSnake();
     drawParticles();
+    ctx.restore();
   }
 
   function drawFood() {
     if (!food) return;
     const cx = food.x * cell + cell / 2, cy = food.y * cell + cell / 2;
     const r = cell * 0.36;
-    ctx.fillStyle = "#d9a441";
+    const golden = !!food.golden;
+    ctx.save();
+    if (golden) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 140);
+      ctx.shadowColor = "rgba(255,210,80,.95)";
+      ctx.shadowBlur = cell * (0.3 + 0.45 * pulse);
+    }
+    ctx.fillStyle = golden ? "#ffd23f" : "#d9a441";
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "rgba(90,54,12,.5)"; ctx.lineWidth = Math.max(1, cell * 0.06);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = golden ? "rgba(120,80,10,.55)" : "rgba(90,54,12,.5)";
+    ctx.lineWidth = Math.max(1, cell * 0.06);
     for (let a = 0; a < Math.PI; a += Math.PI / 5) {
       ctx.beginPath();
       ctx.moveTo(cx - Math.cos(a) * r, cy - Math.sin(a) * r);
       ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
       ctx.stroke();
     }
+    if (golden) { // twinkle
+      const tw = (performance.now() / 200) % (Math.PI * 2);
+      ctx.fillStyle = "#fff6cf";
+      ctx.beginPath(); ctx.arc(cx + Math.cos(tw) * r * 0.5, cy + Math.sin(tw) * r * 0.5, cell * 0.06, 0, 7); ctx.fill();
+    }
+    ctx.restore();
   }
 
   function drawCoffeeshop() {
@@ -524,7 +658,7 @@
       const pad = Math.max(1, cell * 0.08);
       if (i === 0) {
         ctx.fillStyle = ghosting ? "#cdefff" : "#ffbf69";
-      } else if (fx.cake > 0) {
+      } else if (fx.cake > 0 || tulipMania) {
         ctx.fillStyle = `hsl(${(i * 24 + performance.now() / 8) % 360}, 80%, 62%)`;
       } else {
         const g = Math.round(196 - t * 70);
@@ -581,11 +715,17 @@
       fx.espresso = Math.max(0, fx.espresso - dt);
       fx.cake = Math.max(0, fx.cake - dt);
       fx.ghost = Math.max(0, fx.ghost - dt);
+      // combo decays if you dawdle
+      if (comboTimer > 0) {
+        comboTimer -= dt;
+        if (comboTimer <= 0) { combo = 0; updateHud(); }
+      }
       acc += dt * 1000;
       const iv = stepInterval();
       while (acc >= iv) { acc -= iv; tick(); if (!alive || inShop) break; }
       updateHud();
     }
+    if (shake.t > 0) shake.t = Math.max(0, shake.t - dt);
     updateParticles(dt);
     draw();
     requestAnimationFrame(frame);
@@ -615,6 +755,7 @@
     alive = false; running = false; inShop = false;
     pauseBtn.hidden = true;
     burst(headPx().x, headPx().y, { colors: ["#7ec8ff","#bfe6ff","#4a90d9","#ffffff"], n: 30, speed: 150, life: 0.8, grav: 340, glow: true });
+    addShake(9, 0.5);
     sCrash();
     const msg = flavour[(Math.random() * flavour.length) | 0];
     showOverlay("🚲💦 Splash", msg, "Ride again", true);
@@ -687,6 +828,7 @@
 
   /* ---------------- Input ---------------- */
   window.addEventListener("keydown", (e) => {
+    konamiKey(e.key);           // the hidden code works anywhere, anytime
     const k = e.key.toLowerCase();
     if (inShop) {
       if (k >= "1" && k <= String(ITEMS.length)) { e.preventDefault(); buy(parseInt(k, 10) - 1); }
@@ -703,6 +845,15 @@
   document.getElementById("pad").addEventListener("click", (e) => {
     const d = e.target.closest("button")?.dataset.dir;
     if (d) setDir(DIRS[d]);
+  });
+
+  // Hidden mobile trigger: rapidly tap the 🧇 counter 7× to bloom the tulips.
+  let tapCount = 0, tapT = 0;
+  document.getElementById("secret-tap").addEventListener("click", () => {
+    const now = performance.now();
+    tapCount = (now - tapT < 600) ? tapCount + 1 : 1;
+    tapT = now;
+    if (tapCount >= 7) { tapCount = 0; unlockSecret(); }
   });
 
   let tsx = 0, tsy = 0, touching = false;
@@ -734,10 +885,12 @@
   if (new URLSearchParams(location.search).has("dev")) {
     window.snakeDev = {
       state: () => ({ score, wallet, eaten, alive, running, paused, inShop,
+        combo, comboMult: comboMult(), tulipMania,
         fx: { ...fx }, coffeeshop, snakeLen: snake.length, particles: particles.length }),
       grant: (n) => { wallet += n; score += n; if (score > best) best = score; updateHud(); },
       spawnShop: () => placeCoffeeshop(),
-      openShop, buy, closeShop, start, items: ITEMS,
+      konami: (key) => konamiKey(key),
+      openShop, buy, closeShop, start, unlockSecret, items: ITEMS,
     };
   }
 
