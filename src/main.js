@@ -1,6 +1,7 @@
 // Amsterdam Simulator — entry point and game loop.
 import * as THREE from 'three';
-import { buildCity } from './city.js';
+import { buildCity, inRedLight } from './city.js';
+import { Transit } from './transit.js';
 import { Player } from './player.js';
 import { Weather, DayCycle } from './weather.js';
 import { Pickups } from './pickups.js';
@@ -51,6 +52,7 @@ const cyclists = spawnCyclists(scene, rng);
 const tourists = spawnTourists(scene, rng);
 const boats = spawnBoats(scene, rng);
 const tram = spawnTram(scene);
+let transit; // needs `toast`, constructed below
 
 // --- HUD ----------------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
@@ -63,6 +65,8 @@ function toast(text, ms = 2600) {
   clearTimeout(msgTimer);
   msgTimer = setTimeout(() => (el.style.opacity = 0), ms);
 }
+
+transit = new Transit(scene, rng, toast);
 
 weather.onChange = (s) => {
   $('s-weather').textContent = `${s.icon} ${s.name}`;
@@ -85,6 +89,7 @@ addEventListener('keydown', (e) => {
     if (scattered >= 3) toast(`🔔 RING! ${scattered} tourists scatter from the fietspad.`);
   }
   if (e.code === 'KeyC') player.camMode = 1 - player.camMode;
+  if (e.code === 'KeyE' && running) transit.interact(player);
 });
 
 // --- start & loop --------------------------------------------------------------
@@ -95,6 +100,10 @@ $('start-btn').addEventListener('click', () => {
   toast('🚲 Goedemorgen! Find the glowing stroopwafels.', 3500);
 });
 
+let wasInRedLight = false;
+// debug hook for headless verification (see CLAUDE.md)
+window.__ams = { player, day, transit, weather };
+
 const clock = new THREE.Clock();
 function frame() {
   requestAnimationFrame(frame);
@@ -103,10 +112,24 @@ function frame() {
 
   if (running) {
     player.update(dt, colliders, camera, elapsed);
+    transit.update(dt, player);
     updateCyclists(cyclists, dt);
     updateTourists(tourists, dt, rng, player.pos);
     updateBoats(boats, dt, elapsed);
     updateTram(tram, dt);
+
+    // boarding hint when idling next to a stopped bus
+    const hint = transit.boardingHint(player.pos);
+    $('hud-controls').textContent = hint
+      ? '🚌 ' + hint
+      : 'W/S ride · A/D steer · SPACE bell · SHIFT sprint · E bus · C camera';
+
+    // De Wallen border crossing
+    const rl = inRedLight(player.pos.x, player.pos.z);
+    if (rl && !wasInRedLight) {
+      toast('🌹 Welcome to De Wallen. The three X’s are on the city flag. Honest.', 3200);
+    }
+    wasInRedLight = rl;
 
     const got = pickups.update(dt, elapsed, player.pos);
     if (got) {
@@ -121,7 +144,7 @@ function frame() {
     const t = elapsed * 0.08;
     camera.position.set(Math.sin(t) * 60, 26, Math.cos(t) * 60);
     camera.lookAt(0, 4, 0);
-    day.update(dt, new THREE.Vector3());
+    $('s-time').textContent = day.update(dt, new THREE.Vector3());
     updateBoats(boats, dt, elapsed);
     updateCyclists(cyclists, dt);
   }

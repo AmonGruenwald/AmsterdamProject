@@ -69,13 +69,18 @@ export function spawnTourists(scene, rng, count = 34) {
       new THREE.MeshLambertMaterial({ color: '#d9a980' }));
     head.position.y = 1.65;
     g.add(body, head);
-    const cz = WORLD.canalZ[Math.floor(rng() * WORLD.canalZ.length)];
-    const side = rng() < 0.5 ? -1 : 1;
-    g.position.set(
-      rand(rng, -WORLD.blockEdge, WORLD.blockEdge),
-      0,
-      cz + side * rand(rng, WORLD.canalHalf + 1.5, WORLD.canalHalf + 8)
-    );
+    if (rng() < 0.35) {
+      // a healthy share of tourists starts in De Wallen and stays there mentally
+      g.position.set(rand(rng, 25, 105), 0, 30 + (rng() < 0.5 ? -1 : 1) * rand(rng, 8.5, 14));
+    } else {
+      const cz = WORLD.canalZ[Math.floor(rng() * WORLD.canalZ.length)];
+      const side = rng() < 0.5 ? -1 : 1;
+      g.position.set(
+        rand(rng, -WORLD.blockEdge, WORLD.blockEdge),
+        0,
+        cz + side * rand(rng, WORLD.canalHalf + 1.5, WORLD.canalHalf + 8)
+      );
+    }
     scene.add(g);
     list.push({
       mesh: g,

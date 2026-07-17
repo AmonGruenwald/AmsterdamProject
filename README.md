@@ -8,7 +8,9 @@ step, no backend, no `npm install` — plain static files that run fully offline
   an on-screen D-pad, so it plays on phones.
 - 🚲 **Amsterdam Simulator** (`simulator.html`) — a procedurally generated 3D
   canal district built with Three.js: leaning gabled houses, bridges, boats, a
-  tram with right of way, and weather that is legally required to include drizzle.
+  tram with right of way, city buses with a QR scanner that works exactly half
+  the time, a fully neon De Wallen, and weather that is legally required to
+  include drizzle.
 
 ![Genre: cycling & light suffering](https://img.shields.io/badge/genre-cycling%20%26%20light%20suffering-orange)
 
@@ -40,6 +42,7 @@ Want a different city? Add a seed: `http://localhost:8741/simulator.html?seed=42
 | `W` / `S` | pedal / brake |
 | `A` / `D` | steer |
 | `SPACE` | ring bell (scatters nearby tourists) |
+| `E` | scan QR ticket / board bus / request stop |
 | `SHIFT` | sprint |
 | `C` | toggle chase / overview camera |
 
@@ -55,6 +58,13 @@ Want a different city? Add a seed: `http://localhost:8741/simulator.html?seed=42
   you pass through, drizzle is a state you live in.
 - 🌅 **Day/night** — a full day runs in 20 real minutes, from morning light to
   lamplit canals.
+- 🚌 **The bus** — proper public transport on the outer roads, with stops,
+  shelters, and a QR ticket scanner that accepts your ticket 50% of the time.
+  This percentage was chosen after extensive field research and cannot be
+  appealed. Board, ride, press `E` again to request your stop.
+- 🌹 **De Wallen** — the red light district glows along one canal: neon signs,
+  velvet windows, red lanterns, string lights, and silhouettes that are none of
+  your business. Busiest district in town; the tourists get there before you do.
 
 ## Tech
 
@@ -74,6 +84,7 @@ src/main.js       bootstrap + game loop
 src/city.js       procedural city generation + spatial queries
 src/player.js     player bike, physics, camera
 src/npcs.js       NPC cyclists, tourists, boats, tram
+src/transit.js    buses, bus stops, the 50/50 QR scanner
 src/weather.js    weather state machine, rain, day/night cycle
 src/pickups.js    stroopwafels
 vendor/           three.module.js (r160)

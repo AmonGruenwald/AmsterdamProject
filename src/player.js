@@ -130,8 +130,9 @@ export class Player {
   }
 
   updateCamera(camera, dt) {
-    const back = this.camMode === 0 ? 9 : 26;
-    const up = this.camMode === 0 ? 4.2 : 22;
+    // ridingBus is set by Transit while aboard; the bus needs a wider shot
+    const back = this.ridingBus ? 17 : this.camMode === 0 ? 9 : 26;
+    const up = this.ridingBus ? 8.5 : this.camMode === 0 ? 4.2 : 22;
     const target = new THREE.Vector3(
       this.pos.x - Math.sin(this.heading) * back,
       up,
