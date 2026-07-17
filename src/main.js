@@ -160,14 +160,18 @@ function nearKoffieshop(pos) {
   return null;
 }
 
-wallen.onDanceEnd = (hits, total) => {
+wallen.onDanceEnd = (hits, total, level) => {
   stats.kisses = wallen.kisses += hits;
   $('s-kisses').textContent = wallen.kisses;
+  const jackpot = 8 + level * 5;
   if (hits >= total - 1) {
-    stats.waffles += 8;
+    stats.waffles += jackpot;
     $('s-waffles').textContent = stats.waffles;
-    toast(`💃 Flawless. The whole gracht applauds. +${hits} 💋 and 8 stroopwafels rain from a window.`, 4200);
-  } else if (hits >= 5) {
+    toast(`💃 Flawless${level ? ` at ${['', 'double', 'triple', 'quadruple'][level]}-time` : ''}! +${hits} 💋 and ${jackpot} stroopwafels rain from a window.`, 4200);
+    if (wallen.danceLevel > level) {
+      setTimeout(() => toast('🎷 The band noticed. The next dance is faster. Much faster.', 3400), 4300);
+    }
+  } else if (hits >= total * 0.6) {
     stats.waffles += 4;
     $('s-waffles').textContent = stats.waffles;
     toast(`💃 Smooth enough. +${hits} 💋 and 4 stroopwafels, tossed with a wink.`, 4000);
@@ -176,6 +180,18 @@ wallen.onDanceEnd = (hits, total) => {
   } else {
     toast('🚲 You dance like you cycle: mostly forward. The window applauds out of politeness.', 3800);
   }
+};
+
+wallen.onSweetheart = () => {
+  $('verleid').classList.add('sweet');
+  $('verleid-icon').textContent = '👑';
+  toast('👑 100% Verleiding: you are officially the LIEVELING VAN DE WALLEN. The district will remember you.', 5200);
+};
+
+wallen.onGift = () => {
+  stats.waffles++;
+  $('s-waffles').textContent = stats.waffles;
+  toast('🧇💋 A window opens just enough for a stroopwafel to fly out. For you. Obviously.', 3400);
 };
 
 addEventListener('keydown', (e) => {
@@ -237,6 +253,8 @@ $('start-btn').addEventListener('click', () => {
 
 let wasInRedLight = false;
 let hudClock = 0;
+let rlBlend = 0;
+const ROSE = new THREE.Color('#e8365f');
 const _haloPos = new THREE.Vector3();
 // debug hook for headless verification (see CLAUDE.md)
 window.__ams = {
@@ -330,13 +348,28 @@ function frame() {
     // while you're inside De Slang the city keeps living without you —
     // walk in at noon, stumble out at dusk. This is intentional.
 
-    // neon signs buzz and occasionally give up for a moment
+    // neon signs buzz and occasionally give up for a moment;
+    // De Wallen's neon also throbs on the muziek's beat
     for (const m of NEON_SIGN_MATS) {
       const p = m.userData.phase;
-      m.opacity = Math.sin(elapsed * 1.1 + p * 3.7) > 0.985
+      let o = Math.sin(elapsed * 1.1 + p * 3.7) > 0.985
         ? 0.12                                    // brief dropout: authentic
         : 0.82 + 0.18 * Math.sin(elapsed * 9 + p);
+      if (m.userData.redlight) o *= 0.72 + 0.45 * wallen.neonPulse;
+      m.opacity = o;
     }
+
+    // the district colours the air itself: the closer you are, the rosier
+    rlBlend += ((inRedLight(player.pos.x, player.pos.z) ? 1 : 0) - rlBlend) * Math.min(1, dt * 1.2);
+    if (rlBlend > 0.01) {
+      scene.fog.color.lerp(ROSE, rlBlend * 0.38);
+      scene.background.lerp(ROSE, rlBlend * 0.3);
+    }
+
+    // Verleiding meter: visible whenever the district has an opinion of you
+    const v = $('verleid');
+    v.classList.toggle('show', rlBlend > 0.05 || wallen.verleiding > 1);
+    $('verleid-fill').style.width = `${Math.round(wallen.verleiding)}%`;
 
     // dusk dressing: lamp halos fade in, the headlight switches on
     const night = THREE.MathUtils.clamp(-day.elev * 4 + 0.15, 0, 1);

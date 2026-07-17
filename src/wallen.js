@@ -101,8 +101,10 @@ export class WallenMuziek {
     this.nextNote = 0;
     this.step = 0;
     this.level = 0; // 0..1 fade
+    this.heat = 0;  // 0..1 — how much the district likes you right now
     // A minor, walking low and unhurried
     this.bassline = [55.0, 65.41, 82.41, 73.42, 55.0, 82.41, 98.0, 73.42]; // A1 C2 E2 D2 ...
+    this.leadNotes = [220, 261.63, 329.63, 392, 293.66, 329.63, 261.63, 246.94]; // a lazy pentatonic stroll
   }
 
   // must be called from a user gesture (the start button)
@@ -135,6 +137,29 @@ export class WallenMuziek {
     o.connect(g); o2.connect(g); g.connect(this.gain);
     o.start(t); o.stop(t + 0.6);
     o2.start(t); o2.stop(t + 0.6);
+    // the sax-ish lead drifts in when the district is warming to you
+    if (this.heat > 0.05 && this.step % 4 === 2) {
+      const lf = this.leadNotes[((this.step / 4) | 0) % this.leadNotes.length];
+      const lead = ctx.createOscillator();
+      lead.type = 'sawtooth';
+      lead.frequency.value = lf;
+      const vib = ctx.createOscillator();
+      vib.frequency.value = 5.2;
+      const vibGain = ctx.createGain();
+      vibGain.gain.value = 9; // cents of longing
+      vib.connect(vibGain).connect(lead.detune);
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 1500; lp.Q.value = 2;
+      const lg = ctx.createGain();
+      const peak = 0.10 * this.heat;
+      lg.gain.setValueAtTime(0.0001, t);
+      lg.gain.exponentialRampToValueAtTime(Math.max(peak, 0.001), t + 0.14);
+      lg.gain.setValueAtTime(Math.max(peak, 0.001), t + 0.45);
+      lg.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+      lead.connect(lp).connect(lg).connect(this.gain);
+      lead.start(t); lead.stop(t + 1.2);
+      vib.start(t); vib.stop(t + 1.2);
+    }
     // brushed hat on the off-beat
     if (this.step % 2 === 1) {
       const len = 0.06;
@@ -162,6 +187,14 @@ export class WallenMuziek {
       this.step++;
       this.nextNote += BEAT;
     }
+  }
+
+  // 1 on the beat, decaying to 0 — for anything that wants to throb in time
+  pulse() {
+    if (!this.ctx || this.level < 0.02) return 0;
+    const BEAT = 0.68;
+    const since = this.ctx.currentTime - (this.nextNote - BEAT);
+    return Math.max(0, 1 - since / 0.32);
   }
 }
 
@@ -201,16 +234,49 @@ export class Wallen {
       this.shimmer.push({ mesh: strip, phase: rng() * Math.PI * 2 });
     }
 
-    // a dancer in front of roughly every other establishment
+    // a dancer in front of EVERY establishment now — full occupancy,
+    // each with her own style: sway, shimmy, or full diva
     this.dancers = [];
     fronts.forEach((f, i) => {
-      if (i % 2 !== 0) return;
       const d = buildDancer(rng);
+      d.userData.style = i % 3;
       d.position.set(f.x + (rng() - 0.5) * 1.5, 0, f.z + f.n * 0.9);
       d.rotation.y = f.n > 0 ? 0 : Math.PI;
       scene.add(d);
       this.dancers.push(d);
     });
+
+    // seduction progression
+    this.verleiding = 0;        // 0..100, the district's opinion of you
+    this.sweetheart = false;    // stays for the session once earned
+    this.onSweetheart = null;
+    this.onGift = null;         // dancers toss stroopwafels at their sweetheart
+    this.giftClock = 14;
+    this.danceLevel = 0;        // encores get faster and longer
+    this.neonPulse = 0;         // 0..1, follows the muziek beat
+    this.trailClock = 0;
+
+    // rose petals on the canal breeze
+    this.petals = [];
+    const petalTex = (() => {
+      const c = document.createElement('canvas');
+      c.width = c.height = 32;
+      const g = c.getContext('2d');
+      g.fillStyle = 'rgba(255,120,160,0.9)';
+      g.beginPath();
+      g.ellipse(16, 16, 10, 6, 0.7, 0, Math.PI * 2);
+      g.fill();
+      return new THREE.CanvasTexture(c);
+    })();
+    for (let i = 0; i < 32; i++) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: petalTex, transparent: true, opacity: 0, depthWrite: false,
+      }));
+      s.scale.set(0.32, 0.32, 1);
+      scene.add(s);
+      this.petals.push({ sprite: s, life: 0, phase: rng() * 10 });
+    }
+    this.petalClock = 0;
 
     // floating hearts pool
     this.hearts = [];
@@ -263,9 +329,13 @@ export class Wallen {
     if (!this.canDance(player)) return false;
     this.dancing = true;
     this.dancePartner = this.nearestDancer(player.pos);
-    this.danceSeq = Array.from({ length: 8 }, () => DANCE_KEYS[Math.floor(this.rng() * 4)]);
+    // encores: the band plays faster, the sequence grows, the stakes rise
+    const lvl = Math.min(3, this.danceLevel);
+    this.danceBeatDur = DANCE_BEAT * [1, 0.82, 0.68, 0.56][lvl];
+    const len = 8 + lvl * 2;
+    this.danceSeq = Array.from({ length: len }, () => DANCE_KEYS[Math.floor(this.rng() * 4)]);
     this.danceIdx = -1;          // -1 = lead-in bar
-    this.danceTimer = DANCE_BEAT * 2; // two beats to find the rhythm
+    this.danceTimer = this.danceBeatDur * 2; // two beats to find the rhythm
     this.danceHits = 0;
     this.danceHitThis = false;
     this.muziek.init();
@@ -309,8 +379,12 @@ export class Wallen {
         this.dancePartner.userData.twirl = 0.95;
         this.dancePartner.userData.baseY = this.dancePartner.rotation.y;
       }
-      if (hits >= 6) { this.streak++; }
-      this.onDanceEnd?.(hits, this.danceSeq.length);
+      const lvl = this.danceLevel;
+      if (hits >= this.danceSeq.length - 1) this.danceLevel = Math.min(3, this.danceLevel + 1);
+      else if (hits < this.danceSeq.length / 2) this.danceLevel = 0; // the band cools off
+      if (hits >= this.danceSeq.length - 2) this.streak++;
+      this.verleiding = Math.min(100, this.verleiding + hits * 2.5);
+      this.onDanceEnd?.(hits, this.danceSeq.length, lvl);
       return;
     }
     this.danceSeqEl.querySelectorAll('.dans-key').forEach((el) => el.classList.remove('active'));
@@ -332,7 +406,7 @@ export class Wallen {
       player.speed = 0; // you cannot dance and pedal
       this.danceTimer -= dt;
       if (this.danceTimer <= 0) {
-        this.danceTimer += DANCE_BEAT;
+        this.danceTimer += this.danceBeatDur;
         this._danceTick(player);
       }
       // the partner really commits
@@ -342,14 +416,26 @@ export class Wallen {
       }
     }
 
-    // dancers dance — and sometimes twirl
+    // dancers dance — each in her own style — and sometimes twirl
     for (const d of this.dancers) {
       const u = d.userData;
       const t = elapsed * u.tempo + u.phase;
-      u.hips.position.x = Math.sin(t) * 0.12;
-      d.rotation.z = Math.sin(t) * 0.06;
-      u.armR.rotation.z = -2.4 + Math.sin(t * 2) * 0.25;
-      d.position.y = Math.abs(Math.sin(t)) * 0.04;
+      if (u.style === 1) {          // shimmy: quick hips, feet planted
+        u.hips.position.x = Math.sin(t * 2.6) * 0.09;
+        d.rotation.z = Math.sin(t * 2.6) * 0.03;
+        u.armR.rotation.z = -2.4 + Math.sin(t * 5.2) * 0.15;
+        d.position.y = 0;
+      } else if (u.style === 2) {   // diva: slow, enormous, unbothered
+        u.hips.position.x = Math.sin(t * 0.6) * 0.2;
+        d.rotation.z = Math.sin(t * 0.6) * 0.09;
+        u.armR.rotation.z = -2.4 + Math.sin(t * 0.6) * 0.5;
+        d.position.y = Math.abs(Math.sin(t * 0.6)) * 0.06;
+      } else {                      // classic sway
+        u.hips.position.x = Math.sin(t) * 0.12;
+        d.rotation.z = Math.sin(t) * 0.06;
+        u.armR.rotation.z = -2.4 + Math.sin(t * 2) * 0.25;
+        d.position.y = Math.abs(Math.sin(t)) * 0.04;
+      }
       if (u.twirl > 0) {
         u.twirl -= dt;
         d.rotation.y += dt * 7; // a full, unhurried spin
@@ -364,9 +450,23 @@ export class Wallen {
       }
     }
 
-    // neon reflections breathe on the water
+    // neon reflections breathe on the water — harder, on the beat
+    this.neonPulse = this.muziek.pulse();
     for (const s of this.shimmer) {
-      s.mesh.material.opacity = 0.10 + 0.08 * Math.sin(elapsed * 1.3 + s.phase);
+      s.mesh.material.opacity = 0.10 + 0.08 * Math.sin(elapsed * 1.3 + s.phase)
+        + this.neonPulse * 0.07;
+    }
+
+    // rose petals drift wherever the district owns the air
+    for (const p of this.petals) {
+      if (p.life <= 0) continue;
+      p.life -= dt;
+      const s = p.sprite;
+      s.position.y -= dt * 0.9;
+      s.position.x += Math.sin(elapsed * 1.8 + p.phase) * dt * 0.7;
+      s.material.opacity = Math.min(0.85, p.life / 1.5);
+      s.material.rotation += dt * (0.8 + Math.sin(p.phase));
+      if (s.position.y < 0.05 || p.life <= 0) { p.life = 0; s.material.opacity = 0; }
     }
 
     // hearts drift up and fade
@@ -378,10 +478,51 @@ export class Wallen {
       if (h.life <= 0) h.sprite.visible = false;
     }
 
+    // the district warms to you: streaks, dancing, and sweetheart status feed the band
+    this.muziek.heat = this.sweetheart ? 1
+      : this.dancing ? 0.9
+        : Math.min(1, this.streak * 0.25 + this.verleiding / 200);
+
     if (!inside) {
       this.charmTimer = 0;
       if (this.streak > 0) this.streak = 0; // absence resets the romance
+      this.verleiding = Math.max(this.sweetheart ? 40 : 0, this.verleiding - dt * 0.8);
       return;
+    }
+
+    // petals fall while you're in the district
+    this.petalClock -= dt;
+    if (this.petalClock <= 0) {
+      this.petalClock = 0.35;
+      const p = this.petals.find((p2) => p2.life <= 0);
+      if (p) {
+        p.life = 5;
+        p.sprite.position.set(
+          player.pos.x + (this.rng() - 0.5) * 26,
+          7 + this.rng() * 5,
+          player.pos.z + (this.rng() - 0.5) * 18
+        );
+      }
+    }
+
+    // your bike is smitten: a faint heart trail while riding through
+    this.trailClock -= dt;
+    if (this.trailClock <= 0 && Math.abs(player.speed) > 3) {
+      this.trailClock = 0.4;
+      this.spawnHeart(player.pos, 0.4);
+    }
+
+    // sweetheart perk: the windows occasionally tip their favourite cyclist
+    if (this.sweetheart) {
+      this.giftClock -= dt;
+      if (this.giftClock <= 0) {
+        this.giftClock = 16 + this.rng() * 14;
+        const near = this.nearestDancer(player.pos, 14);
+        if (near) {
+          for (let i = 0; i < 4; i++) this.spawnHeart(near.position, 0.7);
+          this.onGift?.();
+        }
+      }
     }
 
     // ambient kisses from nearby windows — aimed at you, personally
@@ -391,6 +532,7 @@ export class Wallen {
       this.kissClock = 1.1 + this.rng() * 1.6;
       const from = near[Math.floor(this.rng() * near.length)];
       this.spawnHeart(from.position);
+      this.verleiding = Math.min(100, this.verleiding + 1);
       // the newest heart drifts toward the player instead of straight up
       const h = this.hearts.find((h2) => h2.life > 1.7);
       if (h) {
@@ -412,6 +554,7 @@ export class Wallen {
         this.streak++;
         const bonus = Math.min(3, 1 + Math.floor(this.streak / 3)); // streaks pay out
         this.kisses += bonus;
+        this.verleiding = Math.min(100, this.verleiding + 6);
         for (let i = 0; i < bonus * 2; i++) this.spawnHeart(player.pos, 0.9);
         const line = this.streak >= 3 && this.streak % 2 === 1
           ? STREAK_LINES[Math.min(STREAK_LINES.length - 1, Math.floor(this.streak / 2) - 1)]
@@ -420,6 +563,13 @@ export class Wallen {
       }
     } else {
       this.charmTimer = Math.max(0, this.charmTimer - dt);
+    }
+
+    // 100% verleiding: the district makes it official
+    if (!this.sweetheart && this.verleiding >= 100) {
+      this.sweetheart = true;
+      for (let i = 0; i < 14; i++) this.spawnHeart(player.pos, 1.6);
+      this.onSweetheart?.();
     }
   }
 }

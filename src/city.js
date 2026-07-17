@@ -271,6 +271,7 @@ function makeHouse(rng, width, depth, redlight = false, koffie = false) {
       );
       sign.position.set(0, 5.4 + rng() * 3, depth / 2 + 0.25);
       sign.material.userData.phase = rng() * 20; // per-sign flicker offset
+      sign.material.userData.redlight = true;    // pulses with the muziek
       NEON_SIGN_MATS.push(sign.material);
       group.add(sign);
     }

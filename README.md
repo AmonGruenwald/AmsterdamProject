@@ -115,10 +115,23 @@ a keyboard.
   synthesised bass groove that fades in when you cross the border, like the
   neighbourhood is playing it just for you. Ringing your bell in De Wallen is
   understood by everyone as flirting. Silhouette-level tasteful throughout.
-  And now you can **dance**: stop by a window, press `Q`, and the district
+  And you can **dance**: stop by a window, press `Q`, and the district
   challenges you to a dance-off synced to its own bass groove — follow the
   arrow steps on the beat. Dance flawlessly and stroopwafels rain from a
   window; dance badly and you're told, kindly, that you dance like you cycle.
+  Dance flawlessly *again* and the band notices: **encores** run faster and
+  longer, up to quadruple-time, with jackpots to match.
+  At full tilt the district is a complete sensory experience: **every window
+  is staffed** (each dancer has her own style — sway, shimmy, or full diva),
+  the air itself blushes rose as you cross the border, petals drift down over
+  the canal, your bike leaves a trail of smitten little hearts, the neon
+  throbs on the beat, and when the district starts to like you a slow
+  saxophone line slides in over the bass — the band plays warmer the longer
+  you stay. It's all tracked on the 💘 **Verleiding meter**: fill it to 100%
+  and you're crowned **Lieveling van De Wallen** for the session — the crown
+  goes gold, the sax never leaves, and windows occasionally open just enough
+  to toss a stroopwafel to their favourite cyclist. Still silhouette-level
+  tasteful. Somehow.
 - ☕ **The inner city** — between the two innermost canals, the koffieshop
   density has reached municipal saturation: almost every building glows green
   (De Groene Reiger, Space Kaas, Cloud Negen, Het Derde Wiel…). Every single

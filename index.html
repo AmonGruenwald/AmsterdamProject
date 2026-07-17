@@ -206,6 +206,30 @@
   .dans-key.hit { background: rgba(57, 211, 83, .45); border-color: #39d353; color: #d9ffe3; }
   .dans-key.miss { opacity: .35; }
 
+  /* ---- Verleiding: the district's opinion of you ---- */
+  #verleid {
+    position: fixed; right: 14px; bottom: 60px; z-index: 9;
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px; border-radius: 999px;
+    background: rgba(22, 6, 14, .72); border: 1px solid rgba(255, 45, 111, .5);
+    box-shadow: 0 0 16px rgba(255, 45, 111, .3);
+    color: #ffd7e4; font-size: 14px; font-family: "Segoe UI", system-ui, sans-serif;
+    opacity: 0; transform: translateY(8px); transition: opacity .4s, transform .4s;
+    pointer-events: none; user-select: none;
+  }
+  #verleid.show { opacity: 1; transform: none; }
+  #verleid-bar {
+    width: 92px; height: 8px; border-radius: 6px; overflow: hidden;
+    background: rgba(255,255,255,.12);
+  }
+  #verleid-fill {
+    height: 100%; width: 0%; border-radius: 6px;
+    background: linear-gradient(90deg, #ff2d6f, #ff6fae, #ffd7e4);
+    box-shadow: 0 0 8px rgba(255, 111, 174, .9);
+    transition: width .35s ease;
+  }
+  #verleid.sweet { border-color: #ffd36b; box-shadow: 0 0 18px rgba(255, 211, 107, .5); }
+
   /* ---------------- Mobile / touch controls (3D simulator shell) ---------------- */
   #splash { overflow-y: auto; }
   #splash h1 { font-size: clamp(28px, 8vw, 42px); }
@@ -265,6 +289,11 @@
 <div id="dans">
   <h3>💃 DANS MET HET RAAM</h3>
   <div id="dans-seq"></div>
+</div>
+
+<div id="verleid">
+  <span id="verleid-icon">💘</span>
+  <div id="verleid-bar"><div id="verleid-fill"></div></div>
 </div>
 
 <div id="deslang">
