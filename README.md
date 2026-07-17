@@ -1,25 +1,37 @@
-# 🚲 Amsterdam Simulator
+# 🚲 Amsterdam Project
 
-A browser-based 3D simulation of the only city where the canals eat bicycles.
+Two browser games about the only city where the canals eat bicycles. No build
+step, no backend, no `npm install` — plain static files that run fully offline.
 
-Cycle through a procedurally generated canal district — leaning gabled canal
-houses, bridges, boats, a tram with right of way, and weather that is legally
-required to include drizzle. Built with Three.js, zero build step, fully
-offline.
+- 🐍 **Amsterdam Snake** (`index.html`) — classic snake, but you're a bike, the
+  food is stroopwafels, and the walls are canals. Works with keyboard, swipe, or
+  an on-screen D-pad, so it plays on phones.
+- 🚲 **Amsterdam Simulator** (`simulator.html`) — a procedurally generated 3D
+  canal district built with Three.js: leaning gabled houses, bridges, boats, a
+  tram with right of way, and weather that is legally required to include drizzle.
 
 ![Genre: cycling & light suffering](https://img.shields.io/badge/genre-cycling%20%26%20light%20suffering-orange)
 
-## Play
+## Play online
 
-ES modules need a web server, so from the repo root:
+Hosted on GitHub Pages (static, no backend):
+
+- Snake: <https://amongruenwald.github.io/AmsterdamProject/>
+- Simulator: <https://amongruenwald.github.io/AmsterdamProject/simulator.html>
+
+## Play locally
+
+Static files, but the simulator's ES modules need a web server, so from the repo
+root:
 
 ```bash
 python3 -m http.server 8741
 ```
 
-Then open <http://localhost:8741>.
+Then open <http://localhost:8741> (snake) or
+<http://localhost:8741/simulator.html> (simulator).
 
-Want a different city? Add a seed: `http://localhost:8741/?seed=42`.
+Want a different city? Add a seed: `http://localhost:8741/simulator.html?seed=42`.
 
 ## Controls
 
@@ -56,7 +68,8 @@ Want a different city? Add a seed: `http://localhost:8741/?seed=42`.
 ## Repository layout
 
 ```
-index.html        HUD, splash screen, import map
+index.html        🐍 Amsterdam Snake (self-contained: HTML + CSS + JS)
+simulator.html    🚲 Amsterdam Simulator entry: HUD, splash, import map
 src/main.js       bootstrap + game loop
 src/city.js       procedural city generation + spatial queries
 src/player.js     player bike, physics, camera

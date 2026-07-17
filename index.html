@@ -2,77 +2,433 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Amsterdam Simulator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1220" />
+<title>Amsterdam Snake 🐍🧇</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0e14; font-family: "Segoe UI", system-ui, sans-serif; }
-  #app { position: fixed; inset: 0; }
-  canvas { display: block; }
-
-  .hud {
-    position: fixed; pointer-events: none; color: #fff;
-    text-shadow: 0 1px 3px rgba(0,0,0,.7); user-select: none;
+  :root {
+    --canal: #16324f;
+    --canal-dark: #0b1220;
+    --brick: #c1553b;
+    --waffle: #d9a441;
+    --bike: #f4a340;
+    --bike-dark: #c9791f;
+    --ink: #eef3fa;
   }
-  #hud-top {
-    top: 12px; left: 50%; transform: translateX(-50%);
-    display: flex; gap: 18px; align-items: center;
-    background: rgba(10, 14, 22, .55); backdrop-filter: blur(6px);
-    padding: 8px 18px; border-radius: 12px; font-size: 15px;
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: radial-gradient(ellipse at 50% 0%, #16324f, #0b1220 70%);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--ink); user-select: none; -webkit-user-select: none;
+    touch-action: none;
+  }
+  #wrap {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+    gap: 10px;
+  }
+  #hud {
+    display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+    justify-content: center;
+    background: rgba(10,14,22,.55); backdrop-filter: blur(6px);
+    padding: 8px 16px; border-radius: 12px; font-size: 15px;
     border: 1px solid rgba(255,255,255,.12);
   }
-  #hud-top .stat { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
-  #hud-msg {
-    bottom: 88px; left: 50%; transform: translateX(-50%);
-    font-size: 20px; font-weight: 600; opacity: 0; transition: opacity .3s;
-    background: rgba(10,14,22,.6); padding: 8px 20px; border-radius: 10px;
+  #hud .stat { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+  #hud b { color: var(--bike); font-variant-numeric: tabular-nums; }
+  #board-holder { position: relative; }
+  canvas {
+    display: block; border-radius: 14px; touch-action: none;
+    background: #0e2036;
+    box-shadow: 0 10px 40px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.06);
   }
-  #hud-controls {
-    bottom: 14px; left: 50%; transform: translateX(-50%);
-    font-size: 12.5px; opacity: .75; letter-spacing: .3px;
-    background: rgba(10,14,22,.45); padding: 6px 14px; border-radius: 8px;
+  /* Overlay (splash / game over) */
+  #overlay {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px; text-align: center;
+    background: rgba(6,10,18,.82); backdrop-filter: blur(3px);
+    border-radius: 14px; padding: 20px;
   }
-  #splash {
-    position: fixed; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 14px;
-    background: radial-gradient(ellipse at center, rgba(13,20,33,.88), rgba(5,8,14,.96));
-    color: #fff; z-index: 10; text-align: center; padding: 20px;
+  #overlay.hidden { display: none; }
+  #overlay h1 { margin: 0; font-size: clamp(26px, 7vw, 40px); letter-spacing: .5px; }
+  #overlay h1 span { color: var(--bike); }
+  #overlay p { margin: 0; max-width: 30ch; line-height: 1.5; color: #cdd6e4; font-size: clamp(13px, 3.6vw, 16px); }
+  #overlay .score-line { font-size: clamp(15px, 4.4vw, 19px); }
+  #overlay .score-line b { color: var(--bike); }
+  button.play {
+    margin-top: 6px; font-size: 18px; padding: 13px 34px; cursor: pointer;
+    background: var(--bike); color: #1a1005; border: none; border-radius: 12px;
+    font-weight: 800; letter-spacing: .3px;
   }
-  #splash h1 { font-size: 42px; margin: 0; letter-spacing: 1px; }
-  #splash h1 span { color: #ff8c42; }
-  #splash p { max-width: 560px; line-height: 1.5; color: #cdd6e4; margin: 0; }
-  #splash button {
-    margin-top: 10px; font-size: 18px; padding: 12px 34px; cursor: pointer;
-    background: #ff8c42; color: #1a1005; border: none; border-radius: 10px; font-weight: 700;
+  button.play:active { transform: translateY(1px); }
+  .hint { font-size: 12.5px; color: #9fb0c8; }
+  .hint a { color: var(--bike); }
+  /* Touch controls */
+  #pad {
+    display: none; gap: 10px; margin-top: 2px;
+    grid-template-columns: repeat(3, 62px); grid-template-rows: repeat(2, 62px);
+    grid-template-areas: ". up ." "left down right";
   }
-  #splash button:hover { background: #ffa25e; }
-  #splash .keys { font-size: 13px; color: #9fb0c8; }
+  #pad button {
+    width: 62px; height: 62px; font-size: 26px; border-radius: 16px;
+    background: rgba(244,163,64,.16); color: var(--bike);
+    border: 1px solid rgba(244,163,64,.4);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #pad button:active { background: rgba(244,163,64,.34); }
+  #pad .up { grid-area: up; } #pad .down { grid-area: down; }
+  #pad .left { grid-area: left; } #pad .right { grid-area: right; }
+  body.touch #pad { display: grid; }
+  body.touch .hint.kb { display: none; }
+  #pause-btn {
+    position: absolute; top: 8px; right: 8px; z-index: 5;
+    background: rgba(10,14,22,.6); color: var(--ink); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 10px; padding: 6px 12px; font-size: 14px; cursor: pointer;
+  }
 </style>
 </head>
 <body>
-<div id="app"></div>
+<div id="wrap">
+  <div id="hud">
+    <div class="stat">🧇 <b id="s-score">0</b></div>
+    <div class="stat">🏆 <b id="s-best">0</b></div>
+    <div class="stat">⚡ <b id="s-speed">1</b></div>
+  </div>
 
-<div class="hud" id="hud-top">
-  <div class="stat">🧇 <span id="s-waffles">0</span></div>
-  <div class="stat">🔔 <span id="s-bells">0</span></div>
-  <div class="stat">💦 <span id="s-splashes">0</span></div>
-  <div class="stat">🕐 <span id="s-time">08:00</span></div>
-  <div class="stat"><span id="s-weather">☁️ cloudy</span></div>
+  <div id="board-holder">
+    <canvas id="board" width="480" height="480"></canvas>
+    <button id="pause-btn" hidden>⏸ Pause</button>
+    <div id="overlay">
+      <h1>🚲 Amsterdam <span>Snake</span></h1>
+      <p>Guide your bike around the canal ring. Eat the stroopwafels.
+         Don't ride into a wall, and — for once — don't ride into yourself.</p>
+      <button class="play" id="play-btn">Start cycling</button>
+      <p class="hint kb">Arrow keys / WASD &nbsp;·&nbsp; P to pause</p>
+      <p class="hint">Swipe or use the pad on mobile</p>
+      <p class="hint"><a href="./simulator.html">Or try the 3D Amsterdam Simulator →</a></p>
+    </div>
+  </div>
+
+  <div id="pad">
+    <button class="up"    data-dir="up"    aria-label="Up">▲</button>
+    <button class="left"  data-dir="left"  aria-label="Left">◀</button>
+    <button class="down"  data-dir="down"  aria-label="Down">▼</button>
+    <button class="right" data-dir="right" aria-label="Right">▶</button>
+  </div>
 </div>
-<div class="hud" id="hud-msg"></div>
-<div class="hud" id="hud-controls">W/S ride · A/D steer · SPACE bell · SHIFT sprint · C camera</div>
 
-<div id="splash">
-  <h1>🚲 Amsterdam <span>Simulator</span></h1>
-  <p>Cycle the canal ring. Collect stroopwafels. Ring your bell at tourists
-     drifting into the bike lane. Mind the canals — the water accepts all bikes,
-     and it will accept yours.</p>
-  <p class="keys">W/S ride &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; SPACE bell &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; C camera</p>
-  <button id="start-btn">Start cycling</button>
-</div>
+<script>
+(() => {
+  "use strict";
 
-<script type="importmap">
-{ "imports": { "three": "./vendor/three.module.js" } }
+  const GRID = 20;                 // cells per side
+  const canvas = document.getElementById("board");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const playBtn = document.getElementById("play-btn");
+  const pauseBtn = document.getElementById("pause-btn");
+  const elScore = document.getElementById("s-score");
+  const elBest  = document.getElementById("s-best");
+  const elSpeed = document.getElementById("s-speed");
+
+  const BEST_KEY = "amsterdam-snake-best";
+  let best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0;
+  elBest.textContent = best;
+
+  // --- Responsive canvas: keep it square and crisp on any screen ---
+  let cell = 24; // pixels per cell (recomputed on resize)
+  function fitCanvas() {
+    const wrapPad = 16;
+    const maxW = Math.min(window.innerWidth - wrapPad, 560);
+    const maxH = window.innerHeight - 230; // leave room for HUD + pad
+    const size = Math.max(200, Math.min(maxW, maxH));
+    cell = Math.floor(size / GRID);
+    const px = cell * GRID;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = px * dpr;
+    canvas.height = px * dpr;
+    canvas.style.width = px + "px";
+    canvas.style.height = px + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  // --- Game state ---
+  let snake, dir, nextDir, food, score, speed, alive, running, paused, acc, lastT;
+
+  const flavour = [
+    "Straight into the canal. Classic.",
+    "You rode into yourself. Even the tourists are impressed.",
+    "The bike accepts the wall. The wall does not accept the bike.",
+    "A tram would have been kinder.",
+    "Ambitious cornering. Poor outcome.",
+  ];
+
+  function reset() {
+    snake = [{x: 8, y: 10}, {x: 7, y: 10}, {x: 6, y: 10}];
+    dir = {x: 1, y: 0};
+    nextDir = dir;
+    score = 0;
+    speed = 1;
+    acc = 0;
+    lastT = 0;
+    alive = true;
+    paused = false;
+    placeFood();
+    updateHud();
+  }
+
+  function placeFood() {
+    // Pick uniformly from the free cells so this can never spin when the board is full.
+    const occupied = new Set(snake.map(s => s.y * GRID + s.x));
+    const free = [];
+    for (let i = 0; i < GRID * GRID; i++) if (!occupied.has(i)) free.push(i);
+    if (free.length === 0) { food = null; win(); return; }
+    const i = free[(Math.random() * free.length) | 0];
+    food = { x: i % GRID, y: (i / GRID) | 0 };
+  }
+
+  function updateHud() {
+    elScore.textContent = score;
+    elBest.textContent = best;
+    elSpeed.textContent = speed;
+  }
+
+  // Steps per second scales gently with score.
+  function stepInterval() {
+    const sps = 6 + Math.min(9, Math.floor(score / 3)); // 6 → 15 steps/sec
+    speed = 1 + Math.min(9, Math.floor(score / 3));
+    return 1000 / sps;
+  }
+
+  function setDir(d) {
+    if (!running || paused || !alive) return;
+    // no 180° reversals
+    if (d.x === -dir.x && d.y === -dir.y) return;
+    nextDir = d;
+  }
+
+  const DIRS = {
+    up:    {x: 0, y: -1},
+    down:  {x: 0, y: 1},
+    left:  {x: -1, y: 0},
+    right: {x: 1, y: 0},
+  };
+
+  function tick() {
+    dir = nextDir;
+    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+    // wall or self collision => game over
+    if (head.x < 0 || head.y < 0 || head.x >= GRID || head.y >= GRID ||
+        snake.some(s => s.x === head.x && s.y === head.y)) {
+      gameOver();
+      return;
+    }
+
+    snake.unshift(head);
+    if (head.x === food.x && head.y === food.y) {
+      score++;
+      if (score > best) { best = score; localStorage.setItem(BEST_KEY, best); }
+      placeFood();
+      updateHud();
+    } else {
+      snake.pop();
+    }
+  }
+
+  // --- Rendering ---
+  function draw() {
+    const px = cell * GRID;
+    // water backdrop
+    ctx.fillStyle = "#0e2036";
+    ctx.fillRect(0, 0, px, px);
+    // subtle canal grid (cobbles)
+    ctx.strokeStyle = "rgba(255,255,255,.035)";
+    ctx.lineWidth = 1;
+    for (let i = 1; i < GRID; i++) {
+      ctx.beginPath(); ctx.moveTo(i * cell, 0); ctx.lineTo(i * cell, px); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * cell); ctx.lineTo(px, i * cell); ctx.stroke();
+    }
+
+    // food = stroopwafel
+    if (food) {
+      const cx = food.x * cell + cell / 2, cy = food.y * cell + cell / 2;
+      ctx.fillStyle = "#d9a441";
+      ctx.beginPath(); ctx.arc(cx, cy, cell * 0.36, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(90,54,12,.5)"; ctx.lineWidth = Math.max(1, cell * 0.06);
+      const r = cell * 0.36;
+      for (let a = 0; a < Math.PI; a += Math.PI / 5) {
+        ctx.beginPath();
+        ctx.moveTo(cx - Math.cos(a) * r, cy - Math.sin(a) * r);
+        ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        ctx.stroke();
+      }
+    }
+
+    // snake = bike trail
+    for (let i = snake.length - 1; i >= 0; i--) {
+      const s = snake[i];
+      const t = i / Math.max(1, snake.length - 1);
+      const pad = Math.max(1, cell * 0.08);
+      if (i === 0) ctx.fillStyle = "#ffbf69";
+      else {
+        const g = Math.round(196 - t * 70);
+        ctx.fillStyle = `rgb(244, ${Math.max(120, g)}, ${Math.round(64 - t * 30)})`;
+      }
+      roundRect(s.x * cell + pad, s.y * cell + pad, cell - pad * 2, cell - pad * 2, cell * 0.28);
+      ctx.fill();
+    }
+    // eyes on the head
+    if (snake && snake.length) {
+      const h = snake[0];
+      const hx = h.x * cell + cell / 2, hy = h.y * cell + cell / 2;
+      ctx.fillStyle = "#1a1005";
+      const off = cell * 0.16, er = Math.max(1, cell * 0.07);
+      const ex = dir.y !== 0 ? off : dir.x * off * 0.6;
+      const ey = dir.x !== 0 ? off : dir.y * off * 0.6;
+      ctx.beginPath(); ctx.arc(hx - (dir.y ? off : ex), hy - (dir.x ? off : ey), er, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(hx + (dir.y ? off : ex), hy + (dir.x ? off : ey), er, 0, 7); ctx.fill();
+    }
+  }
+
+  function roundRect(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // --- Loop ---
+  function frame(t) {
+    if (!running) return;
+    if (!lastT) lastT = t;
+    const dt = t - lastT;
+    lastT = t;
+    if (alive && !paused) {
+      acc += dt;
+      const iv = stepInterval();
+      while (acc >= iv) { acc -= iv; tick(); if (!alive) break; }
+      draw();
+      updateHud();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function start() {
+    reset();
+    running = true;
+    overlay.classList.add("hidden");
+    pauseBtn.hidden = false;
+    pauseBtn.textContent = "⏸ Pause";
+    lastT = 0;
+    requestAnimationFrame(frame);
+  }
+
+  function togglePause() {
+    if (!running || !alive) return;
+    paused = !paused;
+    pauseBtn.textContent = paused ? "▶ Resume" : "⏸ Pause";
+    if (paused) {
+      showOverlay("⏸ Paused", "Take a breath. The canal isn't going anywhere.", "Resume", false);
+    } else {
+      overlay.classList.add("hidden");
+      lastT = 0;
+    }
+  }
+
+  function gameOver() {
+    alive = false;
+    running = false;
+    pauseBtn.hidden = true;
+    const msg = flavour[(Math.random() * flavour.length) | 0];
+    showOverlay("🚲💦 Splash", msg, "Ride again", true);
+  }
+
+  function win() {
+    alive = false;
+    running = false;
+    pauseBtn.hidden = true;
+    showOverlay("🧇🏆 Gouden Fiets", "You filled the entire canal ring with bike. Amsterdam surrenders.", "Ride again", true);
+  }
+
+  function showOverlay(title, text, btnLabel, showScore) {
+    overlay.innerHTML = "";
+    const h = document.createElement("h1");
+    h.innerHTML = title.replace("Snake", "<span>Snake</span>");
+    const p = document.createElement("p");
+    p.textContent = text;
+    overlay.append(h, p);
+    if (showScore) {
+      const sl = document.createElement("p");
+      sl.className = "score-line";
+      sl.innerHTML = `🧇 <b>${score}</b> stroopwafels &nbsp;·&nbsp; 🏆 best <b>${best}</b>`;
+      overlay.append(sl);
+    }
+    const b = document.createElement("button");
+    b.className = "play";
+    b.textContent = btnLabel;
+    b.addEventListener("click", () => {
+      if (title.startsWith("⏸")) { togglePause(); }
+      else start();
+    });
+    overlay.append(b);
+    overlay.classList.remove("hidden");
+  }
+
+  // --- Input: keyboard ---
+  window.addEventListener("keydown", (e) => {
+    const k = e.key.toLowerCase();
+    const map = {
+      arrowup: "up", w: "up", arrowdown: "down", s: "down",
+      arrowleft: "left", a: "left", arrowright: "right", d: "right",
+    };
+    if (map[k]) { e.preventDefault(); setDir(DIRS[map[k]]); }
+    else if (k === "p") togglePause();
+    else if (k === " " || k === "enter") { if (!running) start(); }
+  }, { passive: false });
+
+  // --- Input: touch pad ---
+  document.getElementById("pad").addEventListener("click", (e) => {
+    const d = e.target.closest("button")?.dataset.dir;
+    if (d) setDir(DIRS[d]);
+  });
+
+  // --- Input: swipe on the canvas ---
+  let tsx = 0, tsy = 0, touching = false;
+  canvas.addEventListener("touchstart", (e) => {
+    const t = e.changedTouches[0]; tsx = t.clientX; tsy = t.clientY; touching = true;
+  }, { passive: true });
+  canvas.addEventListener("touchend", (e) => {
+    if (!touching) return;
+    touching = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - tsx, dy = t.clientY - tsy;
+    if (Math.abs(dx) < 18 && Math.abs(dy) < 18) return; // tap, not swipe
+    if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? DIRS.right : DIRS.left);
+    else setDir(dy > 0 ? DIRS.down : DIRS.up);
+  }, { passive: true });
+
+  playBtn.addEventListener("click", start);
+  pauseBtn.addEventListener("click", togglePause);
+
+  // Detect touch devices for the on-screen pad.
+  if (window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window) {
+    document.body.classList.add("touch");
+  }
+
+  window.addEventListener("resize", fitCanvas);
+  window.addEventListener("orientationchange", fitCanvas);
+
+  reset();
+  fitCanvas();
+})();
 </script>
-<script type="module" src="./src/main.js"></script>
 </body>
 </html>
