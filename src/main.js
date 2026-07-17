@@ -4,6 +4,7 @@ import { buildCity, inRedLight, NEON_SIGN_MATS } from './city.js';
 import { Transit } from './transit.js';
 import { buildCuisine, Survival } from './cuisine.js';
 import { Wallen } from './wallen.js';
+import { Boating } from './boating.js';
 import { Player } from './player.js';
 import { Weather, DayCycle } from './weather.js';
 import { Pickups } from './pickups.js';
@@ -57,7 +58,7 @@ const tram = spawnTram(scene);
 const { stalls, toilets } = buildCuisine(scene, rng);
 const survival = new Survival();
 const wallen = new Wallen(scene, rng, redlightFronts);
-let transit; // needs `toast`, constructed below
+let transit, boating; // need `toast`, constructed below
 
 // --- HUD ----------------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
@@ -72,6 +73,12 @@ function toast(text, ms = 2600) {
 }
 
 transit = new Transit(scene, rng, toast);
+boating = new Boating(scene, rng, toast);
+boating.onTourComplete = () => {
+  stats.waffles += 5; // tourists tip in the only currency that matters
+  $('s-waffles').textContent = stats.waffles;
+  $('s-tours').textContent = boating.tours;
+};
 
 survival.onEvent = (type, line) => {
   toast(line, type === 'accident' || type === 'bonk' ? 4200 : 3000);
@@ -109,13 +116,14 @@ addEventListener('keydown', (e) => {
     }
   }
   if (e.code === 'KeyC') player.camMode = 1 - player.camMode;
-  if (e.code === 'KeyE' && running) transit.interact(player);
-  if (e.code === 'KeyF' && running && !transit.riding) {
+  if (e.code === 'KeyE' && running && !boating.boating) transit.interact(player);
+  if (e.code === 'KeyB' && running && !transit.riding) boating.interact(player);
+  if (e.code === 'KeyF' && running && !transit.riding && !boating.boating) {
     const stall = survival.nearestStall(stalls, player.pos);
     if (stall) survival.eat(stall.food);
     else if (survival.hunger < 40) toast('🍽 Nothing to eat here. Follow your nose to a snack cart.');
   }
-  if (e.code === 'KeyT' && running && !transit.riding) {
+  if (e.code === 'KeyT' && running && !transit.riding && !boating.boating) {
     if (survival.nearestToilet(toilets, player.pos)) survival.relieve();
     else if (survival.bowels > 70) toast('🚽 No krul in sight. Amsterdam tests you like this.');
   }
@@ -126,13 +134,14 @@ let running = false;
 $('start-btn').addEventListener('click', () => {
   $('splash').style.display = 'none';
   running = true;
+  wallen.muziek.init(); // audio needs a user gesture; De Wallen provides the motive
   toast('🚲 Goedemorgen! Find the glowing stroopwafels.', 3500);
 });
 
 let wasInRedLight = false;
 let hudClock = 0;
 // debug hook for headless verification (see CLAUDE.md)
-window.__ams = { player, day, transit, weather, survival, wallen, stalls, toilets };
+window.__ams = { player, day, transit, weather, survival, wallen, stalls, toilets, boating };
 
 const clock = new THREE.Clock();
 function frame() {
@@ -143,6 +152,7 @@ function frame() {
   if (running) {
     player.update(dt, colliders, camera, elapsed);
     transit.update(dt, player);
+    boating.update(dt, player, elapsed);
     updateCyclists(cyclists, dt);
     updateTourists(tourists, dt, rng, player.pos);
     updateBoats(boats, dt, elapsed);
@@ -162,17 +172,20 @@ function frame() {
       b.style.color = survival.bowels > 90 ? '#ff6b6b' : survival.bowels > 70 ? '#ffc06b' : '';
     }
 
-    // contextual hint line: bus > food > toilet > default
-    const busHint = transit.boardingHint(player.pos);
+    // contextual hint line: boat > bus > food > toilet > default
+    const boatHint = boating.dockHint(player.pos);
+    const busHint = boating.boating ? null : transit.boardingHint(player.pos);
     const stall = survival.nearestStall(stalls, player.pos);
     const krul = survival.nearestToilet(toilets, player.pos);
-    $('hud-controls').textContent = busHint
-      ? '🚌 ' + busHint
-      : stall
-        ? `${stall.food.emoji} F — eat ${stall.food.name}`
-        : krul
-          ? '🚽 T — use the krul'
-          : 'W/S ride · A/D steer · SPACE bell · E bus · F eat · T toilet · C camera';
+    $('hud-controls').textContent = boatHint
+      ? '⛵ ' + boatHint
+      : busHint
+        ? '🚌 ' + busHint
+        : stall
+          ? `${stall.food.emoji} F — eat ${stall.food.name}`
+          : krul
+            ? '🚽 T — use the krul'
+            : 'W/S ride · A/D steer · SPACE bell · E bus · B boat · F eat · T toilet · C camera';
 
     // De Wallen border crossing
     const rl = inRedLight(player.pos.x, player.pos.z);

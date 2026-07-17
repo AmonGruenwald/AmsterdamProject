@@ -64,7 +64,8 @@ proxy for "the game loop is running".
 | `src/npcs.js` | NPC cyclists, tourists (bell-scatter logic), canal boats, the tram. |
 | `src/transit.js` | Buses, bus stops, and the QR ticket scanner (50% success rate — this is intentional satire, do not "fix" it). Boarding/riding/alighting state machine. |
 | `src/cuisine.js` | Snack carts, krul urinoirs, and the `Survival` meters (hunger → hongerklop slowdown via `player.speedFactor`; bowels → the inevitable). |
-| `src/wallen.js` | De Wallen inhabitants: window dancers, heart-particle kisses, the charm/💋 mechanic, bell-in-district flavour. |
+| `src/wallen.js` | De Wallen inhabitants: window dancers (with twirls), heart-particle kisses, charm streaks, water shimmer, and `WallenMuziek` — the district's procedural Web Audio groove (init needs a user gesture; main.js calls it from the start button). |
+| `src/boating.js` | Sloop rental docks, player boat driving (canal-clamped, ducks under bridges), narrated tours with a stroopwafel payout. Sets `player.external` while driving — see below. |
 | `src/weather.js` | Markov-chain weather + rain particles; `DayCycle` for sun/sky/clock. |
 | `src/pickups.js` | Stroopwafel spawning/collection. |
 
@@ -81,8 +82,12 @@ Key invariants:
   rather than modules touching the DOM.
 - The RNG is seeded (mulberry32); use the passed-in `rng`, never `Math.random`,
   so a given `?seed=` always produces the same city.
+- `player.external = true` hands ownership of `player.pos`/`heading` to another
+  system (the boat) and skips bike physics AND the canal-splash check — without
+  it, driving a boat would count as drowning. The bus doesn't need it (its route
+  crosses canals on bridges), but any new vehicle over water does.
 - `window.__ams` exposes `{ player, day, transit, weather, survival, wallen,
-  stalls, toilets }` as a debug hook for
+  stalls, toilets, boating }` as a debug hook for
   headless verification (teleporting the player, fast-forwarding buses, setting
   the time of day). Keep it working; tests depend on it.
 - Headless Chromium runs the sim at ~4x slow motion (low FPS + the 0.05s dt

@@ -56,6 +56,7 @@ export class Player {
     this.speed = 0;
     this.maxSpeed = 14;
     this.speedFactor = 1; // survival effects (hongerklop) scale this
+    this.external = false; // true while another system (boat) drives pos/heading
     this.lastSafe = this.pos.clone();
     this.inWater = false;
     this.waterTimer = 0;
@@ -67,6 +68,12 @@ export class Player {
 
   update(dt, colliders, camera, elapsed) {
     const k = this.keys;
+    if (this.external) {
+      // another system (the boat) owns pos/heading; we just film it
+      this.mesh.position.set(this.pos.x, 0, this.pos.z);
+      this.updateCamera(camera, dt);
+      return;
+    }
     if (this.inWater) {
       // dunked: bob sadly, then respawn on the quay
       this.waterTimer -= dt;

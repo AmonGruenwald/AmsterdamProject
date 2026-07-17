@@ -47,6 +47,7 @@ Want a different city? Add a seed: `http://localhost:8741/simulator.html?seed=42
 | `A` / `D` | steer |
 | `SPACE` | ring bell (scatters nearby tourists) |
 | `E` | scan QR ticket / board bus / request stop |
+| `B` | rent / moor a canal sloop |
 | `F` | eat at a snack cart |
 | `T` | use a krul urinoir |
 | `SHIFT` | sprint |
@@ -68,12 +69,23 @@ Want a different city? Add a seed: `http://localhost:8741/simulator.html?seed=42
   shelters, and a QR ticket scanner that accepts your ticket 50% of the time.
   This percentage was chosen after extensive field research and cannot be
   appealed. Board, ride, press `E` again to request your stop.
+- ⛵ **Boat tours** — rent a sloop at a BOOT VERHUUR dock (`B`) and three
+  tourists climb aboard expecting narration. You are the narration. Cruise the
+  gracht and the commentary writes itself ("The canals are three metres deep:
+  one metre water, one metre mud, one metre bicycles"), duck under the bridges
+  ("Bruggetje! Everybody down"), deliver six facts, and moor at any dock to
+  collect your tip — five stroopwafels, exact change. The ⛵ counter keeps score.
 - 🌹 **De Wallen** — the red light district glows along one canal: flickering
-  neon, velvet windows, red lanterns, string lights — and now it's inhabited.
-  Dancers sway in front of the windows, kisses drift over the canal as heart
-  particles, and if you cycle slowly past a window, the district notices: your
-  💋 counter goes up and the toasts get flirty. Ringing your bell in De Wallen
-  is understood by everyone as flirting. Silhouette-level tasteful throughout.
+  neon, velvet windows, red lanterns, string lights — and it's inhabited.
+  Dancers sway in front of the windows (and now twirl when you're watching),
+  kisses drift over the canal as heart particles — aimed at you, personally —
+  and pink neon reflections breathe on the water. Cycle slowly past a window
+  and the district notices: your 💋 counter climbs, and if you stay, it
+  *compounds* — the streak lines escalate from flirty to municipal honours.
+  The district also has its own soundtrack now: a slow, low, procedurally
+  synthesised bass groove that fades in when you cross the border, like the
+  neighbourhood is playing it just for you. Ringing your bell in De Wallen is
+  understood by everyone as flirting. Silhouette-level tasteful throughout.
 - 🍟 **Local cuisine (survival)** — you burn calories out there. Hunger (🍟)
   drains as you ride; hit zero and you get *de hongerklop* — the bonk — and
   crawl until you eat. Six snack carts serve the classics: Hollandse Nieuwe,
@@ -105,7 +117,8 @@ src/player.js     player bike, physics, camera
 src/npcs.js       NPC cyclists, tourists, boats, tram
 src/transit.js    buses, bus stops, the 50/50 QR scanner
 src/cuisine.js    snack carts, krul urinoirs, hunger/bowel survival meters
-src/wallen.js     De Wallen life: dancers, heart particles, charm/kisses
+src/wallen.js     De Wallen life: dancers, hearts, charm streaks, district muziek
+src/boating.js    sloop rental docks, boat driving, narrated canal tours
 src/weather.js    weather state machine, rain, day/night cycle
 src/pickups.js    stroopwafels
 vendor/           three.module.js (r160)
