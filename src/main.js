@@ -34,9 +34,12 @@ const seed = Number(new URLSearchParams(location.search).get('seed')) || 1275;
 const rng = mulberry32(seed);
 
 // --- renderer / scene --------------------------------------------------------
+// phones get a lighter GPU budget: lower pixel ratio, no MSAA, smaller shadows
+const COARSE = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, COARSE ? 1.5 : 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -49,7 +52,7 @@ camera.position.set(0, 5, 20);
 
 // post: render -> bloom (for the neon) -> tonemap/output, on an MSAA target
 const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(
-  innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: 4 }
+  innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: COARSE ? 0 : 4 }
 ));
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.45, 0.5, 0.85);
@@ -246,6 +249,17 @@ function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), 0.05);
   const elapsed = clock.elapsedTime;
+
+  // While De Slang covers the screen, the city lives on paper only:
+  // clock and stomach keep running, but the GPU gets the frame off.
+  // (Mobile Safari cannot render the whole 3D street AND the arcade at once.)
+  if (deslang.isOpen) {
+    if (running) {
+      survival.update(dt, player);
+      $('s-time').textContent = day.update(dt, player.pos);
+    }
+    return;
+  }
 
   if (running) {
     player.update(dt, colliders, camera, elapsed);

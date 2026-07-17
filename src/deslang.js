@@ -9,6 +9,11 @@ const GRID = 20;
 const BEST_KEY = 'amsterdam-snake-best';
 const MUTE_KEY = 'amsterdam-snake-muted';
 
+// mobile Safari private mode can throw on writes; never let that kill a frame
+function storeSet(key, value) {
+  try { localStorage.setItem(key, value); } catch { /* played, not saved */ }
+}
+
 const DIRS = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
 const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
 
@@ -204,7 +209,7 @@ export class DeSlang {
   toggleMute() {
     const a = this.audio;
     a.muted = !a.muted;
-    localStorage.setItem(MUTE_KEY, a.muted ? '1' : '0');
+    storeSet(MUTE_KEY, a.muted ? "1" : "0");
     this.muteBtn.textContent = a.muted ? '🔇' : '🔊';
     if (a.master) a.master.gain.value = a.muted ? 0 : 0.3;
   }
@@ -268,6 +273,7 @@ export class DeSlang {
 
   /* ------------- the secret: Tulip Mania ------------- */
   konamiKey(key) {
+    if (typeof key !== 'string' || !key) return; // synthetic events can be keyless
     key = key.length === 1 ? key.toLowerCase() : key;
     this.konami = (key === KONAMI[this.konami]) ? this.konami + 1 : (key === KONAMI[0] ? 1 : 0);
     if (this.konami === KONAMI.length) { this.konami = 0; this.unlockSecret(); }
@@ -284,7 +290,7 @@ export class DeSlang {
     this.toast('Golden hour on the canals · secret item in the koffieshop', 3);
     if (this.running && this.alive) {
       this.wallet += 15; this.score += 15;
-      if (this.score > this.best) { this.best = this.score; localStorage.setItem(BEST_KEY, this.best); }
+      if (this.score > this.best) { this.best = this.score; storeSet(BEST_KEY, this.best); }
       this.updateHud();
     }
     this.addShake(9, 0.6);
@@ -422,7 +428,7 @@ export class DeSlang {
       this.combo++; this.comboTimer = 2.4;
       const base = (this.fx.espresso > 0 ? 2 : 1) * (golden ? 3 : 1) * this.comboMult();
       this.score += base; this.wallet += base; this.eaten++;
-      if (this.score > this.best) { this.best = this.score; localStorage.setItem(BEST_KEY, this.best); }
+      if (this.score > this.best) { this.best = this.score; storeSet(BEST_KEY, this.best); }
       const cols = golden ? ['#ffe08a', '#ffd23f', '#fff6cf', '#c9791f']
                           : ['#d9a441', '#ffbf69', '#8a5a1e', '#fff3d6'];
       this.burst(hp.x, hp.y, { colors: cols, n: golden ? 30 : 16, size: golden ? 4 : 3, speed: golden ? 130 : 90, glow: true });
@@ -589,6 +595,9 @@ export class DeSlang {
   /* ------------- loop ------------- */
   frame(t) {
     if (!this.running || !this.isOpen) return;
+    // schedule first, like the main loop: a mid-frame hiccup must never
+    // kill the game loop (looks like a total freeze on mobile)
+    requestAnimationFrame((t2) => this.frame(t2));
     if (!this.lastT) this.lastT = t;
     let dt = (t - this.lastT) / 1000;
     this.lastT = t;
@@ -610,10 +619,10 @@ export class DeSlang {
     if (this.shake.t > 0) this.shake.t = Math.max(0, this.shake.t - dt);
     this.updateParticles(dt);
     this.draw();
-    requestAnimationFrame((t2) => this.frame(t2));
   }
 
   start() {
+    if (this.running) return; // iOS taps can double-fire; one loop is plenty
     this.initAudio();
     const wallet = this.wallet; // survives resets: it's the street wallet
     this.reset();

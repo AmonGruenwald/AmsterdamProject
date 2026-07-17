@@ -72,7 +72,8 @@ export class DayCycle {
 
     this.sun = new THREE.DirectionalLight('#fff2dd', 2.2);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(2048, 2048);
+    const coarse = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+    this.sun.shadow.mapSize.set(coarse ? 1024 : 2048, coarse ? 1024 : 2048);
     const s = 130;
     Object.assign(this.sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, far: 400 });
     this.hemi = new THREE.HemisphereLight('#cfe4f5', '#3a3630', 0.9);
