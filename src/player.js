@@ -55,6 +55,7 @@ export class Player {
     this.heading = Math.PI;   // facing -Z... heading 0 = +Z; start facing -Z
     this.speed = 0;
     this.maxSpeed = 14;
+    this.speedFactor = 1; // survival effects (hongerklop) scale this
     this.lastSafe = this.pos.clone();
     this.inWater = false;
     this.waterTimer = 0;
@@ -86,7 +87,7 @@ export class Player {
     else if (k.has('KeyS') || k.has('ArrowDown')) this.speed -= 22 * dt;
     else this.speed *= Math.pow(0.35, dt); // coast down
 
-    this.speed = Math.max(-4, Math.min(this.maxSpeed * sprint, this.speed));
+    this.speed = Math.max(-4, Math.min(this.maxSpeed * sprint * this.speedFactor, this.speed));
 
     const steer = 2.2 * Math.min(1, Math.abs(this.speed) / 4);
     if (k.has('KeyA') || k.has('ArrowLeft')) this.heading += steer * dt * Math.sign(this.speed || 1);

@@ -1,7 +1,9 @@
 // Amsterdam Simulator — entry point and game loop.
 import * as THREE from 'three';
-import { buildCity, inRedLight } from './city.js';
+import { buildCity, inRedLight, NEON_SIGN_MATS } from './city.js';
 import { Transit } from './transit.js';
+import { buildCuisine, Survival } from './cuisine.js';
+import { Wallen } from './wallen.js';
 import { Player } from './player.js';
 import { Weather, DayCycle } from './weather.js';
 import { Pickups } from './pickups.js';
@@ -43,7 +45,7 @@ addEventListener('resize', () => {
 });
 
 // --- world -------------------------------------------------------------------
-const { colliders } = buildCity(scene, rng);
+const { colliders, redlightFronts } = buildCity(scene, rng);
 const player = new Player(scene);
 const weather = new Weather(scene, rng);
 const day = new DayCycle(scene);
@@ -52,11 +54,14 @@ const cyclists = spawnCyclists(scene, rng);
 const tourists = spawnTourists(scene, rng);
 const boats = spawnBoats(scene, rng);
 const tram = spawnTram(scene);
+const { stalls, toilets } = buildCuisine(scene, rng);
+const survival = new Survival();
+const wallen = new Wallen(scene, rng, redlightFronts);
 let transit; // needs `toast`, constructed below
 
 // --- HUD ----------------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
-const stats = { waffles: 0, bells: 0, splashes: 0 };
+const stats = { waffles: 0, bells: 0, splashes: 0, kisses: 0 };
 let msgTimer = null;
 function toast(text, ms = 2600) {
   const el = $('hud-msg');
@@ -67,6 +72,15 @@ function toast(text, ms = 2600) {
 }
 
 transit = new Transit(scene, rng, toast);
+
+survival.onEvent = (type, line) => {
+  toast(line, type === 'accident' || type === 'bonk' ? 4200 : 3000);
+};
+wallen.onKiss = (line) => {
+  stats.kisses = wallen.kisses;
+  $('s-kisses').textContent = wallen.kisses;
+  toast(line, 3000);
+};
 
 weather.onChange = (s) => {
   $('s-weather').textContent = `${s.icon} ${s.name}`;
@@ -86,10 +100,25 @@ addEventListener('keydown', (e) => {
     stats.bells++;
     $('s-bells').textContent = stats.bells;
     const scattered = ringBell(tourists, player.pos);
-    if (scattered >= 3) toast(`🔔 RING! ${scattered} tourists scatter from the fietspad.`);
+    if (inRedLight(player.pos.x, player.pos.z)) {
+      toast(wallen.bellBurst(player.pos), 3000);
+    } else if (scattered >= 1) {
+      toast(scattered >= 3
+        ? `🔔 RING! ${scattered} tourists scatter from the fietspad.`
+        : '🔔 Ring! A tourist apologises in four languages while not moving.');
+    }
   }
   if (e.code === 'KeyC') player.camMode = 1 - player.camMode;
   if (e.code === 'KeyE' && running) transit.interact(player);
+  if (e.code === 'KeyF' && running && !transit.riding) {
+    const stall = survival.nearestStall(stalls, player.pos);
+    if (stall) survival.eat(stall.food);
+    else if (survival.hunger < 40) toast('🍽 Nothing to eat here. Follow your nose to a snack cart.');
+  }
+  if (e.code === 'KeyT' && running && !transit.riding) {
+    if (survival.nearestToilet(toilets, player.pos)) survival.relieve();
+    else if (survival.bowels > 70) toast('🚽 No krul in sight. Amsterdam tests you like this.');
+  }
 });
 
 // --- start & loop --------------------------------------------------------------
@@ -101,8 +130,9 @@ $('start-btn').addEventListener('click', () => {
 });
 
 let wasInRedLight = false;
+let hudClock = 0;
 // debug hook for headless verification (see CLAUDE.md)
-window.__ams = { player, day, transit, weather };
+window.__ams = { player, day, transit, weather, survival, wallen, stalls, toilets };
 
 const clock = new THREE.Clock();
 function frame() {
@@ -118,11 +148,31 @@ function frame() {
     updateBoats(boats, dt, elapsed);
     updateTram(tram, dt);
 
-    // boarding hint when idling next to a stopped bus
-    const hint = transit.boardingHint(player.pos);
-    $('hud-controls').textContent = hint
-      ? '🚌 ' + hint
-      : 'W/S ride · A/D steer · SPACE bell · SHIFT sprint · E bus · C camera';
+    survival.update(dt, player);
+    wallen.update(dt, elapsed, player);
+
+    // survival HUD (throttled to ~4x/sec)
+    hudClock -= dt;
+    if (hudClock <= 0) {
+      hudClock = 0.25;
+      const h = $('s-hunger'), b = $('s-bowels');
+      h.textContent = `${Math.ceil(survival.hunger)}%`;
+      h.style.color = survival.hunger < 25 ? '#ff6b6b' : '';
+      b.textContent = `${Math.floor(survival.bowels)}%`;
+      b.style.color = survival.bowels > 90 ? '#ff6b6b' : survival.bowels > 70 ? '#ffc06b' : '';
+    }
+
+    // contextual hint line: bus > food > toilet > default
+    const busHint = transit.boardingHint(player.pos);
+    const stall = survival.nearestStall(stalls, player.pos);
+    const krul = survival.nearestToilet(toilets, player.pos);
+    $('hud-controls').textContent = busHint
+      ? '🚌 ' + busHint
+      : stall
+        ? `${stall.food.emoji} F — eat ${stall.food.name}`
+        : krul
+          ? '🚽 T — use the krul'
+          : 'W/S ride · A/D steer · SPACE bell · E bus · F eat · T toilet · C camera';
 
     // De Wallen border crossing
     const rl = inRedLight(player.pos.x, player.pos.z);
@@ -134,11 +184,20 @@ function frame() {
     const got = pickups.update(dt, elapsed, player.pos);
     if (got) {
       stats.waffles += got;
+      survival.snack();
       $('s-waffles').textContent = stats.waffles;
       toast('🧇 Stroopwafel! You briefly understand happiness.');
     }
     weather.update(dt, player.pos);
     $('s-time').textContent = day.update(dt, player.pos);
+
+    // neon signs buzz and occasionally give up for a moment
+    for (const m of NEON_SIGN_MATS) {
+      const p = m.userData.phase;
+      m.opacity = Math.sin(elapsed * 1.1 + p * 3.7) > 0.985
+        ? 0.12                                    // brief dropout: authentic
+        : 0.82 + 0.18 * Math.sin(elapsed * 9 + p);
+    }
   } else {
     // idle orbit behind the splash screen
     const t = elapsed * 0.08;
@@ -147,6 +206,7 @@ function frame() {
     $('s-time').textContent = day.update(dt, new THREE.Vector3());
     updateBoats(boats, dt, elapsed);
     updateCyclists(cyclists, dt);
+    wallen.update(dt, elapsed, player);
   }
 
   renderer.render(scene, camera);

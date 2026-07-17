@@ -94,6 +94,9 @@ function facadeTexture(color, floors, redlight = false, variant = 0) {
 const NEON_TEXTS = ['♥♥♥', 'XXX', 'CABARET', 'LIVE', 'MOULIN ROOD', 'PARADISO', 'ROSSE', 'OH LÀ LÀ'];
 const NEON_COLORS = ['#ff2d6f', '#ff3b30', '#ff6ad5', '#ff8c42'];
 
+// sign materials, collected so main.js can make them buzz and flicker
+export const NEON_SIGN_MATS = [];
+
 const neonCache = new Map();
 function neonTexture(text, color) {
   const key = `${text}:${color}`;
@@ -205,6 +208,8 @@ function makeHouse(rng, width, depth, redlight = false) {
         })
       );
       sign.position.set(0, 5.4 + rng() * 3, depth / 2 + 0.25);
+      sign.material.userData.phase = rng() * 20; // per-sign flicker offset
+      NEON_SIGN_MATS.push(sign.material);
       group.add(sign);
     }
   }
@@ -217,6 +222,7 @@ function makeHouse(rng, width, depth, redlight = false) {
 export function buildCity(scene, rng) {
   const W = WORLD;
   const colliders = []; // {x, z, hw, hd} AABBs (houses, trees)
+  const redlightFronts = []; // {x, z, n} facade positions in De Wallen (n = outward normal sign on Z)
 
   // Ground: brick-toned pavement
   const ground = new THREE.Mesh(
@@ -291,6 +297,7 @@ export function buildCity(scene, rng) {
         if (W.bridgeX.some((bx) => Math.abs(cx - bx) < 7 + width / 2)) continue;
         const depth = 10 + rng() * 3;
         const redlight = cz === REDLIGHT.canal && cx > REDLIGHT.x1 && cx < REDLIGHT.x2;
+        if (redlight) redlightFronts.push({ x: cx, z: rowZ, n: -side });
         const { group } = makeHouse(rng, width, depth, redlight);
         group.position.set(cx, 0, rowZ + side * depth / 2);
         // windows face the canal
@@ -368,7 +375,7 @@ export function buildCity(scene, rng) {
   scene.add(tower);
   colliders.push({ x: 37, z: -60, hw: 4.5, hd: 4.5 });
 
-  return { colliders, waters };
+  return { colliders, waters, redlightFronts };
 }
 
 // --- spatial queries -------------------------------------------------------

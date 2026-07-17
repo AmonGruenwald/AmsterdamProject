@@ -63,6 +63,8 @@ proxy for "the game loop is running".
 | `src/player.js` | Player bike model, arcade physics, canal-dunk handling, chase camera. |
 | `src/npcs.js` | NPC cyclists, tourists (bell-scatter logic), canal boats, the tram. |
 | `src/transit.js` | Buses, bus stops, and the QR ticket scanner (50% success rate — this is intentional satire, do not "fix" it). Boarding/riding/alighting state machine. |
+| `src/cuisine.js` | Snack carts, krul urinoirs, and the `Survival` meters (hunger → hongerklop slowdown via `player.speedFactor`; bowels → the inevitable). |
+| `src/wallen.js` | De Wallen inhabitants: window dancers, heart-particle kisses, the charm/💋 mechanic, bell-in-district flavour. |
 | `src/weather.js` | Markov-chain weather + rain particles; `DayCycle` for sun/sky/clock. |
 | `src/pickups.js` | Stroopwafel spawning/collection. |
 
@@ -79,7 +81,8 @@ Key invariants:
   rather than modules touching the DOM.
 - The RNG is seeded (mulberry32); use the passed-in `rng`, never `Math.random`,
   so a given `?seed=` always produces the same city.
-- `window.__ams` exposes `{ player, day, transit, weather }` as a debug hook for
+- `window.__ams` exposes `{ player, day, transit, weather, survival, wallen,
+  stalls, toilets }` as a debug hook for
   headless verification (teleporting the player, fast-forwarding buses, setting
   the time of day). Keep it working; tests depend on it.
 - Headless Chromium runs the sim at ~4x slow motion (low FPS + the 0.05s dt
@@ -92,3 +95,7 @@ Key invariants:
 Flavour text (toasts, splash copy) is affectionately deadpan about Amsterdam:
 bikes in canals, tourists in bike lanes, weather-based suffering. Keep new copy
 in that register.
+
+De Wallen content stays at silhouette-and-wink level: suggestion, neon, and
+deadpan humour — never explicit. Bodily-function humour (the bowel meter) stays
+deadpan and implied, never graphic. If in doubt, funnier and subtler wins.
