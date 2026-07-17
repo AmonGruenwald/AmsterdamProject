@@ -2,962 +2,108 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#0b1220" />
-<title>Amsterdam Snake 🐍🧇</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Amsterdam Simulator</title>
 <style>
-  :root {
-    --canal: #16324f;
-    --canal-dark: #0b1220;
-    --brick: #c1553b;
-    --waffle: #d9a441;
-    --bike: #f4a340;
-    --bike-dark: #c9791f;
-    --ink: #eef3fa;
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0e14; font-family: "Segoe UI", system-ui, sans-serif; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  .hud {
+    position: fixed; pointer-events: none; color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,.7); user-select: none;
   }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body {
-    margin: 0; height: 100%; overflow: hidden;
-    background: radial-gradient(ellipse at 50% 0%, #16324f, #0b1220 70%);
-    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-    color: var(--ink); user-select: none; -webkit-user-select: none;
-    touch-action: none;
-  }
-  #wrap {
-    position: fixed; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
-    gap: 10px;
-  }
-  #hud {
-    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
-    justify-content: center;
-    background: rgba(10,14,22,.55); backdrop-filter: blur(6px);
-    padding: 8px 14px; border-radius: 12px; font-size: 15px;
+  #hud-top {
+    top: 12px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 18px; align-items: center;
+    background: rgba(10, 14, 22, .55); backdrop-filter: blur(6px);
+    padding: 8px 18px; border-radius: 12px; font-size: 15px;
     border: 1px solid rgba(255,255,255,.12);
   }
-  #hud .stat { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
-  #hud b { color: var(--bike); font-variant-numeric: tabular-nums; }
-  #mute-btn {
-    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.15);
-    color: var(--ink); border-radius: 9px; padding: 4px 9px; font-size: 15px; cursor: pointer;
+  #hud-top .stat { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+  #hud-msg {
+    bottom: 88px; left: 50%; transform: translateX(-50%);
+    font-size: 20px; font-weight: 600; opacity: 0; transition: opacity .3s;
+    background: rgba(10,14,22,.6); padding: 8px 20px; border-radius: 10px;
   }
-  #fx-bar {
-    min-height: 20px; display: flex; gap: 8px; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 600; letter-spacing: .2px;
+  #hud-controls {
+    bottom: 14px; left: 50%; transform: translateX(-50%);
+    font-size: 12.5px; opacity: .75; letter-spacing: .3px;
+    background: rgba(10,14,22,.45); padding: 6px 14px; border-radius: 8px;
   }
-  .fx-chip { padding: 3px 10px; border-radius: 20px; background: rgba(255,255,255,.1); }
-  .fx-espresso { color: #ffcf87; box-shadow: inset 0 0 0 1px rgba(255,180,80,.5); }
-  .fx-cake { color: #ff9ff3; box-shadow: inset 0 0 0 1px rgba(255,120,220,.5); }
-  .fx-ghost { color: #a9e7ff; box-shadow: inset 0 0 0 1px rgba(120,210,255,.5); }
-  .fx-combo { color: #ffd36b; box-shadow: inset 0 0 0 1px rgba(255,200,90,.6); }
-  .fx-tulip { color: #ff6fae; box-shadow: inset 0 0 0 1px rgba(255,110,175,.6); }
-  #board-holder { position: relative; }
-  /* Toast notifications (stacked, top of the board) */
-  #toasts {
-    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-    display: flex; flex-direction: column; gap: 6px; align-items: center;
-    pointer-events: none; z-index: 6; width: max-content; max-width: 92%;
+  #splash {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    background: radial-gradient(ellipse at center, rgba(13,20,33,.88), rgba(5,8,14,.96));
+    color: #fff; z-index: 10; text-align: center; padding: 20px;
   }
-  .toast {
-    background: rgba(10,14,22,.82); color: var(--ink); border: 1px solid rgba(255,255,255,.16);
-    padding: 7px 14px; border-radius: 999px; font-size: 13.5px; font-weight: 700;
-    text-align: center; box-shadow: 0 6px 18px rgba(0,0,0,.4);
-    animation: toastIn .25s ease-out, toastOut .4s ease-in forwards;
-    animation-delay: 0s, var(--hold, 1.8s);
+  #splash h1 { font-size: 42px; margin: 0; letter-spacing: 1px; }
+  #splash h1 span { color: #ff8c42; }
+  #splash p { max-width: 560px; line-height: 1.5; color: #cdd6e4; margin: 0; }
+  #splash button {
+    margin-top: 10px; font-size: 18px; padding: 12px 34px; cursor: pointer;
+    background: #ff8c42; color: #1a1005; border: none; border-radius: 10px; font-weight: 700;
   }
-  @keyframes toastIn  { from { opacity: 0; transform: translateY(-8px) scale(.96); } to { opacity: 1; } }
-  @keyframes toastOut { to { opacity: 0; transform: translateY(-8px) scale(.96); } }
-  canvas {
-    display: block; border-radius: 14px; touch-action: none;
-    background: #0e2036;
-    box-shadow: 0 10px 40px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.06);
+  #splash button:hover { background: #ffa25e; }
+  #splash .keys { font-size: 13px; color: #9fb0c8; }
+
+  /* Koffieshop De Slang: the door into the 2D game */
+  #snake-house {
+    position: fixed; inset: 0; z-index: 20; background: #0b1220;
+    opacity: 0; pointer-events: none; transition: opacity .5s ease;
   }
-  /* Overlays */
-  #overlay, #shop {
-    position: absolute; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 11px; text-align: center;
-    background: rgba(6,10,18,.82); backdrop-filter: blur(3px);
-    border-radius: 14px; padding: 16px; overflow-y: auto;
+  #snake-house.open { opacity: 1; pointer-events: auto; }
+  #snake-house iframe { width: 100%; height: 100%; border: 0; display: block; }
+  #snake-exit {
+    position: absolute; top: 12px; left: 12px; z-index: 21; cursor: pointer;
+    background: rgba(10,14,22,.75); color: #fff; border: 1px solid rgba(255,255,255,.25);
+    border-radius: 10px; padding: 8px 14px; font-size: 14px; font-family: inherit;
   }
-  #overlay.hidden, #shop.hidden { display: none; }
-  #splash-art { width: min(250px, 56vw); height: auto; aspect-ratio: 280 / 165;
-    flex: 0 0 auto; margin-bottom: 2px; filter: drop-shadow(0 8px 16px rgba(0,0,0,.45)); }
-  @media (max-height: 700px) { #splash-art { width: min(210px, 46vw); } }
-  #splash-art .bob { animation: bob 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
-  #splash-art .bubble  { animation: rise 2.6s ease-in infinite; transform-box: fill-box; }
-  #splash-art .bubble2 { animation: rise 2.6s ease-in .8s infinite; transform-box: fill-box; }
-  #splash-art .bubble3 { animation: rise 2.6s ease-in 1.5s infinite; transform-box: fill-box; }
-  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(2.5px); } }
-  @keyframes rise { 0% { opacity: .9; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-16px); } }
-  @media (prefers-reduced-motion: reduce) { #splash-art .bob, #splash-art .bubble, #splash-art .bubble2, #splash-art .bubble3 { animation: none; } }
-  .splash-tag { margin: 0; font-style: italic; color: #8fa3bd; font-size: 13px; }
-  #overlay h1 { margin: 0; font-size: clamp(26px, 7vw, 40px); letter-spacing: .5px; }
-  #overlay h1 span { color: var(--bike); }
-  #overlay p { margin: 0; max-width: 30ch; line-height: 1.5; color: #cdd6e4; font-size: clamp(13px, 3.6vw, 16px); }
-  #overlay .score-line { font-size: clamp(15px, 4.4vw, 19px); }
-  #overlay .score-line b { color: var(--bike); }
-  button.play {
-    margin-top: 6px; font-size: 18px; padding: 13px 34px; cursor: pointer;
-    background: var(--bike); color: #1a1005; border: none; border-radius: 12px;
-    font-weight: 800; letter-spacing: .3px;
-  }
-  button.play:active { transform: translateY(1px); }
-  .hint { font-size: 12.5px; color: #9fb0c8; }
-  .hint a { color: var(--bike); }
-  /* Shop */
-  #shop h2 { margin: 0; font-size: clamp(22px, 6vw, 30px); }
-  #shop .shop-sub { margin: 0; color: #cdd6e4; font-size: 14px; }
-  #shop .shop-sub b { color: var(--bike); }
-  #shop-items { display: grid; gap: 9px; width: min(360px, 92%); }
-  .shop-item {
-    display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer;
-    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14);
-    color: var(--ink); border-radius: 12px; padding: 9px 12px; font: inherit;
-  }
-  .shop-item:enabled:active { transform: translateY(1px); }
-  .shop-item:disabled { opacity: .4; cursor: not-allowed; }
-  .shop-item .emoji { font-size: 26px; width: 34px; text-align: center; }
-  .shop-item .txt { flex: 1; }
-  .shop-item .name { display: block; font-weight: 700; font-size: 15px; margin-bottom: 2px; }
-  .shop-item .desc { display: block; font-size: 12px; color: #b4c1d4; line-height: 1.35; }
-  .shop-item .cost { font-weight: 800; color: var(--bike); white-space: nowrap; }
-  #shop-leave {
-    margin-top: 4px; background: transparent; color: #9fb0c8; border: 1px solid rgba(255,255,255,.18);
-    border-radius: 10px; padding: 8px 18px; font: inherit; cursor: pointer;
-  }
-  /* Touch controls */
-  #pad {
-    display: none; gap: 10px; margin-top: 2px;
-    grid-template-columns: repeat(3, 62px); grid-template-rows: repeat(2, 62px);
-    grid-template-areas: ". up ." "left down right";
-  }
-  #pad button {
-    width: 62px; height: 62px; font-size: 26px; border-radius: 16px;
-    background: rgba(244,163,64,.16); color: var(--bike);
-    border: 1px solid rgba(244,163,64,.4);
-    display: flex; align-items: center; justify-content: center;
-  }
-  #pad button:active { background: rgba(244,163,64,.34); }
-  #pad .up { grid-area: up; } #pad .down { grid-area: down; }
-  #pad .left { grid-area: left; } #pad .right { grid-area: right; }
-  body.touch #pad { display: grid; }
-  body.touch .hint.kb { display: none; }
-  #pause-btn {
-    position: absolute; top: 8px; right: 8px; z-index: 5;
-    background: rgba(10,14,22,.6); color: var(--ink); border: 1px solid rgba(255,255,255,.15);
-    border-radius: 10px; padding: 6px 12px; font-size: 14px; cursor: pointer;
-  }
+  #snake-exit:hover { background: rgba(30,40,60,.85); }
 </style>
 </head>
 <body>
-<div id="wrap">
-  <div id="hud">
-    <div class="stat" id="secret-tap">🧇 <b id="s-score">0</b></div>
-    <div class="stat">🏆 <b id="s-best">0</b></div>
-    <div class="stat">⚡ <b id="s-speed">1</b></div>
-    <button id="mute-btn" aria-label="Toggle sound">🔊</button>
-  </div>
-  <div id="fx-bar"></div>
+<div id="app"></div>
 
-  <div id="board-holder">
-    <canvas id="board" width="480" height="480"></canvas>
-    <div id="toasts"></div>
-    <button id="pause-btn" hidden>⏸ Pause</button>
+<div class="hud" id="hud-top">
+  <div class="stat">🧇 <span id="s-waffles">0</span></div>
+  <div class="stat">🔔 <span id="s-bells">0</span></div>
+  <div class="stat">💦 <span id="s-splashes">0</span></div>
+  <div class="stat">💋 <span id="s-kisses">0</span></div>
+  <div class="stat">⛵ <span id="s-tours">0</span></div>
+  <div class="stat">🍟 <span id="s-hunger">80%</span></div>
+  <div class="stat">🚽 <span id="s-bowels">10%</span></div>
+  <div class="stat">🕐 <span id="s-time">08:00</span></div>
+  <div class="stat"><span id="s-weather">☁️ cloudy</span></div>
+</div>
+<div class="hud" id="hud-msg"></div>
 
-    <div id="overlay">
-      <svg id="splash-art" width="280" height="165" viewBox="0 0 280 165" role="img"
-           aria-label="A bicycle sinking into an Amsterdam canal while a heron watches from a mooring post.">
-        <!-- canal -->
-        <path d="M0 104 Q70 96 140 104 T280 104 L280 165 L0 165 Z" fill="#16324f"/>
-        <path d="M0 104 Q70 96 140 104 T280 104" fill="none" stroke="#2a5578" stroke-width="2" opacity=".7"/>
-        <!-- floating stroopwafel -->
-        <g>
-          <circle cx="52" cy="107" r="9" fill="#d9a441"/>
-          <path d="M44 107 H60 M46 101 L58 113 M46 113 L58 101" stroke="rgba(90,54,12,.5)" stroke-width="1.5"/>
-        </g>
-        <!-- bike, sinking (tilted) and gently bobbing -->
-        <g transform="rotate(-13 110 96)">
-          <g class="bob" stroke="#f4a340" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="92" cy="86" r="19"/>
-            <circle cx="150" cy="112" r="19" opacity=".4"/>
-            <path d="M92 86 L128 90 L150 112 M128 90 L120 66 M150 112 L120 66"/>
-            <path d="M112 64 L128 65"/>
-            <path d="M92 86 L86 62 M79 60 L95 63"/>
-          </g>
-        </g>
-        <!-- bubbles -->
-        <g fill="#bcd6ea">
-          <circle class="bubble"  cx="150" cy="100" r="3"/>
-          <circle class="bubble2" cx="160" cy="98"  r="2.4"/>
-          <circle class="bubble3" cx="144" cy="99"  r="1.8"/>
-        </g>
-        <!-- mooring post + heron, watching -->
-        <rect x="236" y="98" width="8" height="60" rx="3" fill="#6b4f34"/>
-        <rect x="232" y="95" width="16" height="6" rx="3" fill="#7d5d3e"/>
-        <g>
-          <path d="M239 96 L240 80 M243 96 L241 80" stroke="#c9a15a" stroke-width="2"/>
-          <ellipse cx="240" cy="74" rx="13" ry="8" fill="#9aa7b3"/>
-          <ellipse cx="243" cy="75" rx="9" ry="5" fill="#8592a0"/>
-          <path d="M252 72 L263 76 L252 78 Z" fill="#8592a0"/>
-          <path d="M231 70 C226 60 236 52 244 46" stroke="#9aa7b3" stroke-width="5" fill="none" stroke-linecap="round"/>
-          <circle cx="246" cy="44" r="4.5" fill="#9aa7b3"/>
-          <path d="M248 40 L254 37" stroke="#9aa7b3" stroke-width="2"/>
-          <path d="M242 46 L227 51" stroke="#f0b24a" stroke-width="2.5" stroke-linecap="round"/>
-          <circle cx="244.5" cy="43" r="1" fill="#12202f"/>
-        </g>
-      </svg>
-      <h1>🚲 Amsterdam <span>Snake</span></h1>
-      <p>Ride the canal ring, eat stroopwafels, and duck into a
-         <b>koffieshop</b> for questionable power-ups. Don't ride into a
-         wall — or, for once, yourself.</p>
-      <p class="splash-tag">Nine million bikes in this city. Try to keep this one dry.</p>
-      <button class="play" id="play-btn">Start cycling</button>
-      <p class="hint kb">Arrow keys / WASD &nbsp;·&nbsp; P pause &nbsp;·&nbsp; M mute</p>
-      <p class="hint">Swipe or use the pad on mobile</p>
-      <p class="hint"><a href="./simulator.html">Or try the 3D Amsterdam Simulator →</a></p>
-    </div>
+<div id="snake-house">
+  <button id="snake-exit">🚪 ← Back to the street</button>
+  <iframe id="snake-frame" title="Amsterdam Snake — inside Koffieshop De Slang"></iframe>
+</div>
+<div class="hud" id="hud-controls">W/S ride · A/D steer · SPACE bell · E bus · B boat · F eat · T toilet · C camera</div>
 
-    <div id="shop" class="hidden">
-      <h2>☕ Koffieshop</h2>
-      <p class="shop-sub">You have <b id="shop-wallet">0</b> 🧇. Spend wisely — or don't.</p>
-      <div id="shop-items"></div>
-      <button id="shop-leave">Leave — just here for the vibes</button>
-    </div>
-  </div>
-
-  <div id="pad">
-    <button class="up"    data-dir="up"    aria-label="Up">▲</button>
-    <button class="left"  data-dir="left"  aria-label="Left">◀</button>
-    <button class="down"  data-dir="down"  aria-label="Down">▼</button>
-    <button class="right" data-dir="right" aria-label="Right">▶</button>
-  </div>
+<div id="splash">
+  <h1>🚲 Amsterdam <span>Simulator</span></h1>
+  <p>Cycle the canal ring. Collect stroopwafels. Ring your bell at tourists
+     drifting into the bike lane. Catch a bus, if the QR scanner is in the mood.
+     Eat herring, patat, and kroketten from the wall — you burn real calories out
+     here, and what goes in must come out, so learn where the krul urinoirs are.
+     Rent a sloop at a BOOT VERHUUR dock and narrate a canal tour for three
+     tourists who believed the brochure. Visit De Wallen, respectfully; slow down
+     and it may wink back — it has its own soundtrack now. And when the rain gets
+     philosophical, duck into <b style="color:#39d353">Koffieshop De Slang</b>,
+     where the city folds into an older, flatter Amsterdam.
+     Mind the canals — the water accepts all bikes, and it will accept yours.</p>
+  <p class="keys">W/S ride &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; SPACE bell &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; E bus &nbsp;·&nbsp; B boat &nbsp;·&nbsp; F eat &nbsp;·&nbsp; T toilet &nbsp;·&nbsp; G koffieshop &nbsp;·&nbsp; C camera</p>
+  <button id="start-btn">Start cycling</button>
+  <p class="keys"><a href="./index.html" style="color:#ff8c42">🐍 Or play Amsterdam Snake →</a></p>
 </div>
 
-<script>
-(() => {
-  "use strict";
-
-  const GRID = 20;
-  const canvas = document.getElementById("board");
-  const ctx = canvas.getContext("2d");
-  const overlay = document.getElementById("overlay");
-  const shopEl = document.getElementById("shop");
-  const shopItemsEl = document.getElementById("shop-items");
-  const shopWalletEl = document.getElementById("shop-wallet");
-  const playBtn = document.getElementById("play-btn");
-  const pauseBtn = document.getElementById("pause-btn");
-  const muteBtn = document.getElementById("mute-btn");
-  const elScore = document.getElementById("s-score");
-  const elBest  = document.getElementById("s-best");
-  const elSpeed = document.getElementById("s-speed");
-  const fxBar = document.getElementById("fx-bar");
-  const toastsEl = document.getElementById("toasts");
-
-  const BEST_KEY = "amsterdam-snake-best";
-  const MUTE_KEY = "amsterdam-snake-muted";
-  let best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0;
-  elBest.textContent = best;
-
-  /* ---------------- Toasts + screen shake ---------------- */
-  function toast(text, hold = 1.8) {
-    const el = document.createElement("div");
-    el.className = "toast";
-    el.style.setProperty("--hold", hold + "s");
-    el.textContent = text;
-    toastsEl.append(el);
-    setTimeout(() => el.remove(), (hold + 0.7) * 1000);
-    while (toastsEl.children.length > 3) toastsEl.firstChild.remove();
-  }
-  const shake = { t: 0, max: 1, mag: 0 };
-  function addShake(mag, dur = 0.35) {
-    if (mag >= shake.mag * (shake.t / (shake.max || 1))) { shake.mag = mag; shake.t = dur; shake.max = dur; }
-  }
-
-  /* ---------------- Audio: procedural, no files ---------------- */
-  const audio = { ctx: null, master: null, muted: localStorage.getItem(MUTE_KEY) === "1", noise: null };
-  muteBtn.textContent = audio.muted ? "🔇" : "🔊";
-
-  function initAudio() {
-    if (audio.ctx) { if (audio.ctx.state === "suspended") audio.ctx.resume(); return; }
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    audio.ctx = new AC();
-    audio.master = audio.ctx.createGain();
-    audio.master.gain.value = audio.muted ? 0 : 0.3;
-    audio.master.connect(audio.ctx.destination);
-    // one reusable noise buffer for splashes
-    const len = audio.ctx.sampleRate * 0.5;
-    const buf = audio.ctx.createBuffer(1, len, audio.ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-    audio.noise = buf;
-  }
-  function beep(freq, dur, type = "square", vol = 0.4, slideTo = null, when = 0) {
-    if (!audio.ctx) return;
-    const t0 = audio.ctx.currentTime + when;
-    const o = audio.ctx.createOscillator();
-    const g = audio.ctx.createGain();
-    o.type = type; o.frequency.setValueAtTime(freq, t0);
-    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    o.connect(g); g.connect(audio.master);
-    o.start(t0); o.stop(t0 + dur + 0.02);
-  }
-  function splash() {
-    if (!audio.ctx || !audio.noise) return;
-    const t0 = audio.ctx.currentTime;
-    const s = audio.ctx.createBufferSource(); s.buffer = audio.noise;
-    const f = audio.ctx.createBiquadFilter(); f.type = "lowpass";
-    f.frequency.setValueAtTime(1800, t0);
-    f.frequency.exponentialRampToValueAtTime(200, t0 + 0.45);
-    const g = audio.ctx.createGain();
-    g.gain.setValueAtTime(0.5, t0);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
-    s.connect(f); f.connect(g); g.connect(audio.master);
-    s.start(t0); s.stop(t0 + 0.5);
-    beep(320, 0.4, "sine", 0.3, 90);
-  }
-  const sEat   = (combo = 0) => beep(520 + Math.min(combo, 8) * 60, 0.09, "square", 0.35, 900 + Math.min(combo, 8) * 60);
-  const sGold  = () => { [784, 1047, 1319].forEach((f, i) => beep(f, 0.13, "triangle", 0.32, null, i * 0.05)); };
-  const sShop  = () => { beep(880, 0.12, "sine", 0.3); beep(1320, 0.18, "sine", 0.25, null, 0.08); };
-  const sBuy   = () => { beep(660, 0.09, "triangle", 0.35); beep(990, 0.12, "triangle", 0.3, null, 0.07); };
-  const sPower = () => [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.12, "triangle", 0.28, null, i * 0.06));
-  const sCrash = () => splash();
-  const sSecret = () => { // a little fanfare
-    [523, 659, 784, 1047, 1319, 1047, 1319, 1568].forEach((f, i) =>
-      beep(f, 0.16, "triangle", 0.3, null, i * 0.09));
-  };
-
-  function toggleMute() {
-    audio.muted = !audio.muted;
-    localStorage.setItem(MUTE_KEY, audio.muted ? "1" : "0");
-    muteBtn.textContent = audio.muted ? "🔇" : "🔊";
-    if (audio.master) audio.master.gain.value = audio.muted ? 0 : 0.3;
-  }
-
-  /* ---------------- Particles ---------------- */
-  let particles = [];     // transient bursts (pixel space)
-  let glints = [];        // ambient drifting sparkles
-  function burst(px, py, opts) {
-    const n = opts.n || 14;
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = (opts.speed || 90) * (0.35 + Math.random() * 0.9);
-      particles.push({
-        x: px, y: py,
-        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (opts.lift || 0),
-        life: (opts.life || 0.6) * (0.7 + Math.random() * 0.6),
-        max:  opts.life || 0.6,
-        size: (opts.size || 3) * (0.6 + Math.random() * 0.9),
-        grav: opts.grav != null ? opts.grav : 260,
-        color: opts.colors[(Math.random() * opts.colors.length) | 0],
-        glow: !!opts.glow,
-      });
-    }
-  }
-  function seedGlints() {
-    glints = [];
-    for (let i = 0; i < 22; i++) {
-      glints.push({
-        x: Math.random(), y: Math.random(),
-        vy: -(0.01 + Math.random() * 0.03),
-        r: 0.5 + Math.random() * 1.6,
-        ph: Math.random() * Math.PI * 2,
-      });
-    }
-  }
-  seedGlints();
-  function updateParticles(dt) {
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.grav * dt;
-      p.life -= dt;
-      if (p.life <= 0) particles.splice(i, 1);
-    }
-    for (const g of glints) {
-      g.y += g.vy * dt; g.ph += dt * 2;
-      if (g.y < -0.02) { g.y = 1.02; g.x = Math.random(); }
-    }
-  }
-
-  /* ---------------- Game state ---------------- */
-  let snake, dir, nextDir, food, coffeeshop, score, wallet, eaten, speed;
-  let alive, running, paused, inShop, acc, lastT;
-  let combo, comboTimer;                 // eat-streak multiplier
-  let tulipMania = false;                // the hidden secret, once unlocked
-  const fx = { espresso: 0, cake: 0, ghost: 0 }; // remaining seconds
-
-  const flavour = [
-    "Straight into the canal. Classic.",
-    "You rode into yourself. Even the tourists are impressed.",
-    "The bike accepts the wall. The wall does not accept the bike.",
-    "A tram would have been kinder.",
-    "Ambitious cornering. Poor outcome.",
-    "The heron saw the whole thing. The heron says nothing.",
-    "You have reached your final destination. It is a canal.",
-    "Nine million bikes in this city. This one's in the water.",
-    "Somewhere, a rental company is preparing an invoice.",
-    "Physics: 1. You: 0. Stroopwafels: still delicious.",
-    "The canal files this under 'Tuesday'.",
-    "Even the ducks are judging you.",
-    "That'll be a €50 fishing-out fee. Pin of contant?",
-  ];
-
-  /* ---------------- Shop items ---------------- */
-  const ITEMS = [
-    { emoji: "☕", name: "Espresso Shot", cost: 3,
-      desc: "Double stroopwafels for 10s. Faster. Wired.",
-      apply() { fx.espresso = 10; burst(headPx().x, headPx().y, { colors: ["#ffcf87","#c9791f","#6b3d10"], n: 22, glow: true }); } },
-    { emoji: "🍰", name: "Space Cake", cost: 5,
-      desc: "Time slows for 12s. Everything is fine.",
-      apply() { fx.cake = 12; burst(headPx().x, headPx().y, { colors: ["#ff9ff3","#a29bfe","#74b9ff","#ffeaa7"], n: 28, speed: 70, glow: true }); } },
-    { emoji: "👻", name: "Ghost Bike", cost: 8,
-      desc: "Phase through walls & yourself for 8s.",
-      apply() { fx.ghost = 8; burst(headPx().x, headPx().y, { colors: ["#a9e7ff","#ffffff","#8ecbff"], n: 24, glow: true }); } },
-    { emoji: "🧹", name: "Straighten Out", cost: 4,
-      desc: "Trim your tail back to a tidy 3.",
-      apply() {
-        while (snake.length > 3) {
-          const s = snake.pop();
-          burst(s.x * cell + cell / 2, s.y * cell + cell / 2, { colors: ["#f4a340","#ffbf69"], n: 5, size: 2.5 });
-        }
-      } },
-  ];
-
-  function headPx() {
-    const h = snake[0];
-    return { x: h.x * cell + cell / 2, y: h.y * cell + cell / 2 };
-  }
-
-  // Secret shop item, unlocked only via the hidden code.
-  const TULIP = { emoji: "🌷", name: "Tulip Bulb", cost: 12, secret: true,
-    desc: "Speculative bubble: 2× points for 20s AND phase for 6s. It'll be fine.",
-    apply() {
-      fx.espresso = 20; fx.ghost = 6;
-      burst(headPx().x, headPx().y, { colors: ["#ff6fae","#ffd36b","#8affc1","#a29bfe","#ff8f8f"], n: 40, speed: 130, glow: true });
-      addShake(7, 0.4);
-      toast("🌷 The bubble will never burst");
-    } };
-
-  /* ---------------- The hidden secret: Tulip Mania ---------------- */
-  const KONAMI = ["ArrowUp","ArrowUp","ArrowDown","ArrowDown","ArrowLeft","ArrowRight","ArrowLeft","ArrowRight","b","a"];
-  let konami = 0;
-  function konamiKey(key) {
-    key = key.length === 1 ? key.toLowerCase() : key;
-    konami = (key === KONAMI[konami]) ? konami + 1 : (key === KONAMI[0] ? 1 : 0);
-    if (konami === KONAMI.length) { konami = 0; unlockSecret(); }
-  }
-  function unlockSecret() {
-    if (!tulipMania) {
-      tulipMania = true;
-      if (!ITEMS.some(it => it.secret)) ITEMS.push(TULIP);
-    }
-    initAudio(); sSecret();
-    toast("🌷🌷 TULIP MANIA UNLOCKED 🌷🌷", 3);
-    toast("Golden hour on the canals · secret item in the koffieshop", 3);
-    if (running && alive) {
-      wallet += 15; score += 15;
-      if (score > best) { best = score; localStorage.setItem(BEST_KEY, best); }
-      updateHud();
-    }
-    addShake(9, 0.6);
-    // tulip + wafel confetti rain across the board
-    const px = cell * GRID;
-    for (let i = 0; i < 90; i++) {
-      particles.push({
-        x: Math.random() * px, y: -Math.random() * px * 0.4,
-        vx: (Math.random() * 2 - 1) * 40, vy: 90 + Math.random() * 140,
-        life: 1.2 + Math.random() * 1.4, max: 2.6,
-        size: 2 + Math.random() * 3, grav: 60,
-        color: ["#ff6fae","#ffd36b","#8affc1","#a29bfe","#ffffff"][(Math.random() * 5) | 0],
-        glow: true,
-      });
-    }
-  }
-
-  /* ---------------- Canvas sizing ---------------- */
-  let cell = 24;
-  function fitCanvas() {
-    const maxW = Math.min(window.innerWidth - 16, 560);
-    const maxH = window.innerHeight - 250;
-    const size = Math.max(200, Math.min(maxW, maxH));
-    cell = Math.floor(size / GRID);
-    const px = cell * GRID;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = px * dpr; canvas.height = px * dpr;
-    canvas.style.width = px + "px"; canvas.style.height = px + "px";
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw();
-  }
-
-  function reset() {
-    snake = [{x: 8, y: 10}, {x: 7, y: 10}, {x: 6, y: 10}];
-    dir = {x: 1, y: 0}; nextDir = dir;
-    score = 0; wallet = 0; eaten = 0; speed = 1;
-    combo = 0; comboTimer = 0;
-    acc = 0; lastT = 0;
-    alive = true; paused = false; inShop = false;
-    coffeeshop = null;
-    fx.espresso = fx.cake = fx.ghost = 0;
-    shake.t = 0; shake.mag = 0;
-    particles = [];
-    placeFood();
-    updateHud();
-  }
-
-  function freeCells(extra) {
-    const occ = new Set(snake.map(s => s.y * GRID + s.x));
-    if (food) occ.add(food.y * GRID + food.x);
-    if (coffeeshop) occ.add(coffeeshop.y * GRID + coffeeshop.x);
-    if (extra) occ.add(extra.y * GRID + extra.x);
-    const free = [];
-    for (let i = 0; i < GRID * GRID; i++) if (!occ.has(i)) free.push(i);
-    return free;
-  }
-  function placeFood() {
-    const occ = new Set(snake.map(s => s.y * GRID + s.x));
-    if (coffeeshop) occ.add(coffeeshop.y * GRID + coffeeshop.x);
-    const free = [];
-    for (let i = 0; i < GRID * GRID; i++) if (!occ.has(i)) free.push(i);
-    if (!free.length) { food = null; win(); return; }
-    const i = free[(Math.random() * free.length) | 0];
-    // ~16% golden stroopwafel (worth 3×); a touch more common during Tulip Mania.
-    const golden = Math.random() < (tulipMania ? 0.28 : 0.16);
-    food = { x: i % GRID, y: (i / GRID) | 0, golden };
-  }
-  function placeCoffeeshop() {
-    const free = freeCells();
-    if (!free.length) return;
-    const i = free[(Math.random() * free.length) | 0];
-    coffeeshop = { x: i % GRID, y: (i / GRID) | 0 };
-  }
-
-  function updateHud() {
-    elScore.textContent = wallet;
-    elBest.textContent = best;
-    elSpeed.textContent = speed;
-    const chips = [];
-    if (comboMult() > 1)  chips.push(`<span class="fx-chip fx-combo">🔥 ${comboMult()}× combo</span>`);
-    if (fx.espresso > 0)  chips.push(`<span class="fx-chip fx-espresso">☕ 2× ${Math.ceil(fx.espresso)}s</span>`);
-    if (fx.cake > 0)      chips.push(`<span class="fx-chip fx-cake">🍰 slow ${Math.ceil(fx.cake)}s</span>`);
-    if (fx.ghost > 0)     chips.push(`<span class="fx-chip fx-ghost">👻 ${Math.ceil(fx.ghost)}s</span>`);
-    if (tulipMania)       chips.push(`<span class="fx-chip fx-tulip">🌷 mania</span>`);
-    fxBar.innerHTML = chips.join("");
-  }
-  // Combo grows the multiplier: 3 eats → 2×, 6 → 3×, capped at 5×.
-  function comboMult() { return 1 + Math.min(4, Math.floor(combo / 3)); }
-
-  function stepInterval() {
-    let sps = 6 + Math.min(9, Math.floor(score / 3));
-    speed = 1 + Math.min(9, Math.floor(score / 3));
-    if (fx.espresso > 0) sps += 3;
-    let iv = 1000 / sps;
-    if (fx.cake > 0) iv *= 1.75;
-    return iv;
-  }
-
-  const DIRS = { up:{x:0,y:-1}, down:{x:0,y:1}, left:{x:-1,y:0}, right:{x:1,y:0} };
-  function setDir(d) {
-    if (!running || paused || inShop || !alive) return;
-    if (d.x === -dir.x && d.y === -dir.y) return;
-    nextDir = d;
-  }
-
-  function tick() {
-    dir = nextDir;
-    let hx = snake[0].x + dir.x, hy = snake[0].y + dir.y;
-    const ghosting = fx.ghost > 0;
-
-    if (hx < 0 || hy < 0 || hx >= GRID || hy >= GRID) {
-      if (ghosting) { hx = (hx + GRID) % GRID; hy = (hy + GRID) % GRID; }
-      else return gameOver();
-    }
-    const head = { x: hx, y: hy };
-    const hitSelf = snake.some(s => s.x === hx && s.y === hy);
-    if (hitSelf && !ghosting) return gameOver();
-
-    snake.unshift(head);
-
-    // faint motion trail behind the head
-    const hp = { x: head.x * cell + cell / 2, y: head.y * cell + cell / 2 };
-    particles.push({ x: hp.x, y: hp.y, vx: -dir.x * 20, vy: -dir.y * 20,
-      life: 0.28, max: 0.28, size: cell * 0.12, grav: 0,
-      color: tulipMania ? "#ff9ff3" : "#ffbf69", glow: true });
-
-    if (food && head.x === food.x && head.y === food.y) {
-      const golden = !!food.golden;
-      combo++; comboTimer = 2.4;
-      const base = (fx.espresso > 0 ? 2 : 1) * (golden ? 3 : 1) * comboMult();
-      score += base; wallet += base; eaten++;
-      if (score > best) { best = score; localStorage.setItem(BEST_KEY, best); }
-      const cols = golden ? ["#ffe08a","#ffd23f","#fff6cf","#c9791f"]
-                          : ["#d9a441","#ffbf69","#8a5a1e","#fff3d6"];
-      burst(hp.x, hp.y, { colors: cols, n: golden ? 30 : 16, size: golden ? 4 : 3, speed: golden ? 130 : 90, glow: true });
-      if (golden) { sGold(); addShake(4, 0.3); toast(`✨ Golden stroopwafel · +${base}`, 1.3); }
-      else sEat(combo);
-      if (comboMult() >= 3 && combo % 3 === 0) toast(`🔥 ${comboMult()}× combo!`, 1.1);
-      placeFood();
-      if (eaten % 4 === 0 && !coffeeshop) placeCoffeeshop();
-      updateHud();
-    } else {
-      snake.pop();
-    }
-
-    if (coffeeshop && head.x === coffeeshop.x && head.y === coffeeshop.y) openShop();
-  }
-
-  /* ---------------- Rendering ---------------- */
-  function draw() {
-    const px = cell * GRID;
-    ctx.clearRect(0, 0, px, px);
-
-    // water
-    ctx.fillStyle = "#0e2036";
-    ctx.fillRect(0, 0, px, px);
-    // space-cake wash
-    if (fx.cake > 0) {
-      const g = ctx.createLinearGradient(0, 0, px, px);
-      g.addColorStop(0, "rgba(255,120,220,.08)");
-      g.addColorStop(.5, "rgba(120,180,255,.08)");
-      g.addColorStop(1, "rgba(255,230,120,.08)");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, px, px);
-    }
-    // Tulip Mania golden-hour wash
-    if (tulipMania) {
-      const hue = (performance.now() / 40) % 360;
-      ctx.fillStyle = `hsla(${hue}, 80%, 60%, 0.05)`;
-      ctx.fillRect(0, 0, px, px);
-    }
-    // grid
-    ctx.strokeStyle = "rgba(255,255,255,.035)"; ctx.lineWidth = 1;
-    for (let i = 1; i < GRID; i++) {
-      ctx.beginPath(); ctx.moveTo(i * cell, 0); ctx.lineTo(i * cell, px); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, i * cell); ctx.lineTo(px, i * cell); ctx.stroke();
-    }
-    // ambient glints
-    for (const gl of glints) {
-      const a = 0.12 + 0.12 * (0.5 + 0.5 * Math.sin(gl.ph));
-      ctx.fillStyle = tulipMania ? `hsla(${(gl.ph * 40) % 360},80%,70%,${a})` : `rgba(150,200,255,${a})`;
-      ctx.beginPath(); ctx.arc(gl.x * px, gl.y * px, gl.r, 0, 7); ctx.fill();
-    }
-
-    // everything below the background shakes together
-    ctx.save();
-    if (shake.t > 0) {
-      const m = shake.mag * (shake.t / (shake.max || 1));
-      ctx.translate((Math.random() * 2 - 1) * m, (Math.random() * 2 - 1) * m);
-    }
-    drawCoffeeshop();
-    drawFood();
-    drawSnake();
-    drawParticles();
-    ctx.restore();
-  }
-
-  function drawFood() {
-    if (!food) return;
-    const cx = food.x * cell + cell / 2, cy = food.y * cell + cell / 2;
-    const r = cell * 0.36;
-    const golden = !!food.golden;
-    ctx.save();
-    if (golden) {
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 140);
-      ctx.shadowColor = "rgba(255,210,80,.95)";
-      ctx.shadowBlur = cell * (0.3 + 0.45 * pulse);
-    }
-    ctx.fillStyle = golden ? "#ffd23f" : "#d9a441";
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = golden ? "rgba(120,80,10,.55)" : "rgba(90,54,12,.5)";
-    ctx.lineWidth = Math.max(1, cell * 0.06);
-    for (let a = 0; a < Math.PI; a += Math.PI / 5) {
-      ctx.beginPath();
-      ctx.moveTo(cx - Math.cos(a) * r, cy - Math.sin(a) * r);
-      ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-      ctx.stroke();
-    }
-    if (golden) { // twinkle
-      const tw = (performance.now() / 200) % (Math.PI * 2);
-      ctx.fillStyle = "#fff6cf";
-      ctx.beginPath(); ctx.arc(cx + Math.cos(tw) * r * 0.5, cy + Math.sin(tw) * r * 0.5, cell * 0.06, 0, 7); ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  function drawCoffeeshop() {
-    if (!coffeeshop) return;
-    const x = coffeeshop.x * cell, y = coffeeshop.y * cell;
-    const pad = Math.max(1, cell * 0.1), w = cell - pad * 2;
-    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
-    // glow
-    ctx.save();
-    ctx.shadowColor = "rgba(120,220,140,.9)";
-    ctx.shadowBlur = cell * (0.35 + 0.25 * pulse);
-    // building
-    ctx.fillStyle = "#6b4226";
-    roundRect(x + pad, y + pad, w, w, cell * 0.2); ctx.fill();
-    ctx.restore();
-    // green awning
-    ctx.fillStyle = "#2ecc71";
-    roundRect(x + pad, y + pad, w, w * 0.34, cell * 0.16); ctx.fill();
-    // glowing window / cup
-    ctx.fillStyle = `rgba(255,240,200,${0.6 + 0.4 * pulse})`;
-    const wx = x + cell / 2, wy = y + cell * 0.62, wr = cell * 0.14;
-    ctx.beginPath(); ctx.arc(wx, wy, wr, 0, 7); ctx.fill();
-  }
-
-  function drawSnake() {
-    const ghosting = fx.ghost > 0;
-    ctx.save();
-    if (ghosting) ctx.globalAlpha = 0.55 + 0.25 * Math.sin(performance.now() / 120);
-    for (let i = snake.length - 1; i >= 0; i--) {
-      const s = snake[i];
-      const t = i / Math.max(1, snake.length - 1);
-      const pad = Math.max(1, cell * 0.08);
-      if (i === 0) {
-        ctx.fillStyle = ghosting ? "#cdefff" : "#ffbf69";
-      } else if (fx.cake > 0 || tulipMania) {
-        ctx.fillStyle = `hsl(${(i * 24 + performance.now() / 8) % 360}, 80%, 62%)`;
-      } else {
-        const g = Math.round(196 - t * 70);
-        ctx.fillStyle = `rgb(244, ${Math.max(120, g)}, ${Math.round(64 - t * 30)})`;
-      }
-      roundRect(s.x * cell + pad, s.y * cell + pad, cell - pad * 2, cell - pad * 2, cell * 0.28);
-      ctx.fill();
-    }
-    ctx.restore();
-    // eyes
-    const h = snake[0];
-    const hx = h.x * cell + cell / 2, hy = h.y * cell + cell / 2;
-    ctx.fillStyle = "#1a1005";
-    const off = cell * 0.16, er = Math.max(1, cell * 0.07);
-    const ex = dir.y !== 0 ? off : dir.x * off * 0.6;
-    const ey = dir.x !== 0 ? off : dir.y * off * 0.6;
-    ctx.beginPath(); ctx.arc(hx - (dir.y ? off : ex), hy - (dir.x ? off : ey), er, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(hx + (dir.y ? off : ex), hy + (dir.x ? off : ey), er, 0, 7); ctx.fill();
-  }
-
-  function drawParticles() {
-    for (const p of particles) {
-      const a = Math.max(0, p.life / p.max);
-      ctx.globalAlpha = a;
-      if (p.glow) { ctx.shadowColor = p.color; ctx.shadowBlur = p.size * 3; }
-      ctx.fillStyle = p.color;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, 7); ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  function roundRect(x, y, w, h, r) {
-    r = Math.min(r, w / 2, h / 2);
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-
-  /* ---------------- Loop ---------------- */
-  function frame(t) {
-    if (!running) return;
-    if (!lastT) lastT = t;
-    let dt = (t - lastT) / 1000;
-    lastT = t;
-    if (dt > 0.1) dt = 0.1;
-
-    if (alive && !paused && !inShop) {
-      // effect timers
-      fx.espresso = Math.max(0, fx.espresso - dt);
-      fx.cake = Math.max(0, fx.cake - dt);
-      fx.ghost = Math.max(0, fx.ghost - dt);
-      // combo decays if you dawdle
-      if (comboTimer > 0) {
-        comboTimer -= dt;
-        if (comboTimer <= 0) { combo = 0; updateHud(); }
-      }
-      acc += dt * 1000;
-      const iv = stepInterval();
-      while (acc >= iv) { acc -= iv; tick(); if (!alive || inShop) break; }
-      updateHud();
-    }
-    if (shake.t > 0) shake.t = Math.max(0, shake.t - dt);
-    updateParticles(dt);
-    draw();
-    requestAnimationFrame(frame);
-  }
-
-  function start() {
-    initAudio();
-    reset();
-    running = true;
-    overlay.classList.add("hidden");
-    shopEl.classList.add("hidden");
-    pauseBtn.hidden = false;
-    pauseBtn.textContent = "⏸ Pause";
-    lastT = 0;
-    requestAnimationFrame(frame);
-  }
-
-  function togglePause() {
-    if (!running || !alive || inShop) return;
-    paused = !paused;
-    pauseBtn.textContent = paused ? "▶ Resume" : "⏸ Pause";
-    if (paused) showOverlay("⏸ Paused", "Take a breath. The canal isn't going anywhere.", "Resume", false);
-    else { overlay.classList.add("hidden"); lastT = 0; }
-  }
-
-  function gameOver() {
-    alive = false; running = false; inShop = false;
-    pauseBtn.hidden = true;
-    burst(headPx().x, headPx().y, { colors: ["#7ec8ff","#bfe6ff","#4a90d9","#ffffff"], n: 30, speed: 150, life: 0.8, grav: 340, glow: true });
-    addShake(9, 0.5);
-    sCrash();
-    const msg = flavour[(Math.random() * flavour.length) | 0];
-    showOverlay("🚲💦 Splash", msg, "Ride again", true);
-  }
-
-  function win() {
-    alive = false; running = false; inShop = false;
-    pauseBtn.hidden = true;
-    showOverlay("🧇🏆 Gouden Fiets", "You filled the entire canal ring with bike. Amsterdam surrenders.", "Ride again", true);
-  }
-
-  function showOverlay(title, text, btnLabel, showScore) {
-    overlay.innerHTML = "";
-    const h = document.createElement("h1");
-    h.innerHTML = title.replace("Snake", "<span>Snake</span>");
-    const p = document.createElement("p"); p.textContent = text;
-    overlay.append(h, p);
-    if (showScore) {
-      const sl = document.createElement("p"); sl.className = "score-line";
-      sl.innerHTML = `🧇 <b>${wallet}</b> stroopwafels &nbsp;·&nbsp; 🏆 best <b>${best}</b>`;
-      overlay.append(sl);
-    }
-    const b = document.createElement("button");
-    b.className = "play"; b.textContent = btnLabel;
-    b.addEventListener("click", () => { if (title.startsWith("⏸")) togglePause(); else start(); });
-    overlay.append(b);
-    overlay.classList.remove("hidden");
-  }
-
-  /* ---------------- Shop ---------------- */
-  function openShop() {
-    inShop = true;
-    coffeeshop = null;
-    pauseBtn.hidden = true;
-    sShop();
-    renderShop();
-    shopEl.classList.remove("hidden");
-  }
-  function renderShop() {
-    shopWalletEl.textContent = wallet;
-    shopItemsEl.innerHTML = "";
-    ITEMS.forEach((it, idx) => {
-      const b = document.createElement("button");
-      b.className = "shop-item";
-      b.disabled = wallet < it.cost;
-      b.innerHTML =
-        `<span class="emoji">${it.emoji}</span>` +
-        `<span class="txt"><span class="name">${idx + 1}. ${it.name}</span>` +
-        `<span class="desc">${it.desc}</span></span>` +
-        `<span class="cost">${it.cost} 🧇</span>`;
-      b.addEventListener("click", () => buy(idx));
-      shopItemsEl.append(b);
-    });
-  }
-  function buy(idx) {
-    const it = ITEMS[idx];
-    if (!it || wallet < it.cost || !inShop) return;
-    wallet -= it.cost;
-    it.apply();
-    sBuy(); sPower();
-    closeShop();
-    updateHud();
-  }
-  function closeShop() {
-    inShop = false;
-    shopEl.classList.add("hidden");
-    pauseBtn.hidden = false;
-    lastT = 0;
-  }
-
-  /* ---------------- Input ---------------- */
-  window.addEventListener("keydown", (e) => {
-    konamiKey(e.key);           // the hidden code works anywhere, anytime
-    const k = e.key.toLowerCase();
-    if (inShop) {
-      if (k >= "1" && k <= String(ITEMS.length)) { e.preventDefault(); buy(parseInt(k, 10) - 1); }
-      else if (k === "escape" || k === "l") closeShop();
-      return;
-    }
-    const map = { arrowup:"up", w:"up", arrowdown:"down", s:"down", arrowleft:"left", a:"left", arrowright:"right", d:"right" };
-    if (map[k]) { e.preventDefault(); setDir(DIRS[map[k]]); }
-    else if (k === "p") togglePause();
-    else if (k === "m") toggleMute();
-    else if (k === " " || k === "enter") { if (!running) start(); }
-  }, { passive: false });
-
-  document.getElementById("pad").addEventListener("click", (e) => {
-    const d = e.target.closest("button")?.dataset.dir;
-    if (d) setDir(DIRS[d]);
-  });
-
-  // Hidden mobile trigger: rapidly tap the 🧇 counter 7× to bloom the tulips.
-  let tapCount = 0, tapT = 0;
-  document.getElementById("secret-tap").addEventListener("click", () => {
-    const now = performance.now();
-    tapCount = (now - tapT < 600) ? tapCount + 1 : 1;
-    tapT = now;
-    if (tapCount >= 7) { tapCount = 0; unlockSecret(); }
-  });
-
-  let tsx = 0, tsy = 0, touching = false;
-  canvas.addEventListener("touchstart", (e) => {
-    const t = e.changedTouches[0]; tsx = t.clientX; tsy = t.clientY; touching = true;
-  }, { passive: true });
-  canvas.addEventListener("touchend", (e) => {
-    if (!touching) return; touching = false;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - tsx, dy = t.clientY - tsy;
-    if (Math.abs(dx) < 18 && Math.abs(dy) < 18) return;
-    if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? DIRS.right : DIRS.left);
-    else setDir(dy > 0 ? DIRS.down : DIRS.up);
-  }, { passive: true });
-
-  playBtn.addEventListener("click", start);
-  pauseBtn.addEventListener("click", togglePause);
-  muteBtn.addEventListener("click", () => { initAudio(); toggleMute(); });
-  document.getElementById("shop-leave").addEventListener("click", closeShop);
-
-  if (window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window) {
-    document.body.classList.add("touch");
-  }
-  window.addEventListener("resize", fitCanvas);
-  window.addEventListener("orientationchange", fitCanvas);
-
-  // Opt-in dev seam (add ?dev to the URL). Inert for normal play; handy for
-  // poking at state, forcing a koffieshop, or testing power-ups.
-  if (new URLSearchParams(location.search).has("dev")) {
-    window.snakeDev = {
-      state: () => ({ score, wallet, eaten, alive, running, paused, inShop,
-        combo, comboMult: comboMult(), tulipMania,
-        fx: { ...fx }, coffeeshop, snakeLen: snake.length, particles: particles.length }),
-      grant: (n) => { wallet += n; score += n; if (score > best) best = score; updateHud(); },
-      spawnShop: () => placeCoffeeshop(),
-      konami: (key) => konamiKey(key),
-      openShop, buy, closeShop, start, unlockSecret, items: ITEMS,
-    };
-  }
-
-  reset();
-  fitCanvas();
-})();
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
 </script>
+<script type="module" src="./src/main.js"></script>
 </body>
 </html>

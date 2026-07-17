@@ -5,6 +5,7 @@ import { Transit } from './transit.js';
 import { buildCuisine, Survival } from './cuisine.js';
 import { Wallen } from './wallen.js';
 import { Boating } from './boating.js';
+import { Koffieshop } from './koffieshop.js';
 import { Player } from './player.js';
 import { Weather, DayCycle } from './weather.js';
 import { Pickups } from './pickups.js';
@@ -56,6 +57,7 @@ const tourists = spawnTourists(scene, rng);
 const boats = spawnBoats(scene, rng);
 const tram = spawnTram(scene);
 const { stalls, toilets } = buildCuisine(scene, rng);
+const koffieshop = new Koffieshop(scene, colliders);
 const survival = new Survival();
 const wallen = new Wallen(scene, rng, redlightFronts);
 let transit, boating; // need `toast`, constructed below
@@ -101,7 +103,36 @@ player.onSplash = () => {
   toast('💦 SPLASH — the canal accepts your bike, as it accepts all bikes.');
 };
 
+// --- Koffieshop De Slang: the passage into the 2D game (snake.html) ---------
+const SNAKE_BEST_KEY = 'amsterdam-snake-best';
+let snakeOpen = false;
+let snakeBestBefore = 0;
+function enterSnake() {
+  snakeOpen = true;
+  snakeBestBefore = parseInt(localStorage.getItem(SNAKE_BEST_KEY) || '0', 10) || 0;
+  const frame = $('snake-frame');
+  if (!frame.src) frame.src = './snake.html';
+  $('snake-house').classList.add('open');
+  setTimeout(() => frame.focus(), 550); // hand the keyboard through the door
+}
+function exitSnake() {
+  if (!snakeOpen) return;
+  snakeOpen = false;
+  $('snake-house').classList.remove('open');
+  const best = parseInt(localStorage.getItem(SNAKE_BEST_KEY) || '0', 10) || 0;
+  const gain = Math.max(0, best - snakeBestBefore);
+  if (gain > 0) {
+    stats.waffles += gain;
+    $('s-waffles').textContent = stats.waffles;
+    toast(`🐍 New high score in there! ${gain} stroopwafels materialise in your pocket. Don't ask how.`, 4200);
+  } else {
+    toast('☕ You step back outside, blinking. Time moves differently in De Slang.', 3600);
+  }
+}
+$('snake-exit').addEventListener('click', exitSnake);
+
 addEventListener('keydown', (e) => {
+  if (snakeOpen) { if (e.code === 'Escape') exitSnake(); return; }
   if (e.code === 'Space') {
     e.preventDefault();
     stats.bells++;
@@ -123,6 +154,9 @@ addEventListener('keydown', (e) => {
     if (stall) survival.eat(stall.food);
     else if (survival.hunger < 40) toast('🍽 Nothing to eat here. Follow your nose to a snack cart.');
   }
+  if (e.code === 'KeyG' && running && !transit.riding && !boating.boating) {
+    if (koffieshop.near(player.pos)) enterSnake();
+  }
   if (e.code === 'KeyT' && running && !transit.riding && !boating.boating) {
     if (survival.nearestToilet(toilets, player.pos)) survival.relieve();
     else if (survival.bowels > 70) toast('🚽 No krul in sight. Amsterdam tests you like this.');
@@ -141,7 +175,10 @@ $('start-btn').addEventListener('click', () => {
 let wasInRedLight = false;
 let hudClock = 0;
 // debug hook for headless verification (see CLAUDE.md)
-window.__ams = { player, day, transit, weather, survival, wallen, stalls, toilets, boating };
+window.__ams = {
+  player, day, transit, weather, survival, wallen, stalls, toilets, boating,
+  koffieshop, enterSnake, exitSnake,
+};
 
 const clock = new THREE.Clock();
 function frame() {
@@ -172,20 +209,23 @@ function frame() {
       b.style.color = survival.bowels > 90 ? '#ff6b6b' : survival.bowels > 70 ? '#ffc06b' : '';
     }
 
-    // contextual hint line: boat > bus > food > toilet > default
+    // contextual hint line: koffieshop > boat > bus > food > toilet > default
+    const shopNear = !boating.boating && koffieshop.near(player.pos);
     const boatHint = boating.dockHint(player.pos);
     const busHint = boating.boating ? null : transit.boardingHint(player.pos);
     const stall = survival.nearestStall(stalls, player.pos);
     const krul = survival.nearestToilet(toilets, player.pos);
-    $('hud-controls').textContent = boatHint
-      ? '⛵ ' + boatHint
-      : busHint
-        ? '🚌 ' + busHint
-        : stall
-          ? `${stall.food.emoji} F — eat ${stall.food.name}`
-          : krul
-            ? '🚽 T — use the krul'
-            : 'W/S ride · A/D steer · SPACE bell · E bus · B boat · F eat · T toilet · C camera';
+    $('hud-controls').textContent = shopNear
+      ? '🐍 G — duck into Koffieshop De Slang'
+      : boatHint
+        ? '⛵ ' + boatHint
+        : busHint
+          ? '🚌 ' + busHint
+          : stall
+            ? `${stall.food.emoji} F — eat ${stall.food.name}`
+            : krul
+              ? '🚽 T — use the krul'
+              : 'W/S ride · A/D steer · SPACE bell · E bus · B boat · F eat · T toilet · G shop · C camera';
 
     // De Wallen border crossing
     const rl = inRedLight(player.pos.x, player.pos.z);
@@ -202,7 +242,10 @@ function frame() {
       toast('🧇 Stroopwafel! You briefly understand happiness.');
     }
     weather.update(dt, player.pos);
+    koffieshop.update(elapsed);
     $('s-time').textContent = day.update(dt, player.pos);
+    // while you're inside De Slang the city keeps living without you —
+    // walk in at noon, stumble out at dusk. This is intentional.
 
     // neon signs buzz and occasionally give up for a moment
     for (const m of NEON_SIGN_MATS) {

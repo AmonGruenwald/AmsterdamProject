@@ -1,20 +1,29 @@
 # 🚲 Amsterdam Project
 
-Two browser games about the only city where the canals eat bicycles. No build
-step, no backend, no `npm install` — plain static files that run fully offline.
+One browser game about the only city where the canals eat bicycles — with a
+second, older Amsterdam folded up inside it. No build step, no backend, no
+`npm install` — plain static files that run fully offline.
 
-- 🐍 **Amsterdam Snake** (`index.html`) — classic snake, but you're a bike, the
-  food is stroopwafels, and the walls are canals. Ride into a **koffieshop** to
-  spend your stroopwafels on power-ups (Espresso Shot, Space Cake, Ghost Bike,
-  Straighten Out). Comes with particle effects (crumb bursts, canal splashes,
-  ambient glints) and a procedural Web Audio soundtrack — no audio files, all
-  synthesised in-browser. Keyboard, swipe, or on-screen D-pad, so it plays on
-  phones. Add `?dev` to the URL for a small tinkering/debug hook.
-- 🚲 **Amsterdam Simulator** (`simulator.html`) — a procedurally generated 3D
-  canal district built with Three.js: leaning gabled houses, bridges, boats, a
-  tram with right of way, city buses with a QR scanner that works exactly half
-  the time, a fully neon De Wallen, and weather that is legally required to
-  include drizzle.
+- 🚲 **Amsterdam Simulator** (`index.html`, the front door) — a procedurally
+  generated 3D canal district built with Three.js: leaning gabled houses,
+  bridges, boats, a tram with right of way, city buses with a QR scanner that
+  works exactly half the time, a fully neon De Wallen, and weather that is
+  legally required to include drizzle.
+- 🐍 **Amsterdam Snake** (`snake.html`, inside **Koffieshop De Slang**) — ride
+  up to the green-neon koffieshop in the 3D city and press `G` to duck inside:
+  the city folds into a 2D arcade Amsterdam. Classic snake, but you're a bike,
+  the food is stroopwafels, and the walls are canals. Ride into a **koffieshop**
+  (yes, one inside the other) to spend your stroopwafels on power-ups (Espresso
+  Shot, Space Cake, Ghost Bike, Straighten Out). Comes with particle effects
+  (crumb bursts, canal splashes, ambient glints) and a procedural Web Audio
+  soundtrack — no audio files, all synthesised in-browser. Keyboard, swipe, or
+  on-screen D-pad, so it also plays standalone on phones at `snake.html`. Add
+  `?dev` to the URL for a small tinkering/debug hook.
+
+The two Amsterdams are connected: set a new high score in De Slang and you walk
+back out into the 3D street with that many extra stroopwafels in your pocket.
+While you're inside, the 3D city keeps living without you — walk in at noon,
+stumble out at dusk. This is intentional.
 
 ![Genre: cycling & light suffering](https://img.shields.io/badge/genre-cycling%20%26%20light%20suffering-orange)
 
@@ -29,8 +38,10 @@ step, no backend, no `npm install` — plain static files that run fully offline
 
 Hosted on GitHub Pages (static, no backend):
 
-- Snake: <https://amongruenwald.github.io/AmsterdamProject/>
-- Simulator: <https://amongruenwald.github.io/AmsterdamProject/simulator.html>
+- The game: <https://amongruenwald.github.io/AmsterdamProject/>
+- Snake standalone (nice on phones): <https://amongruenwald.github.io/AmsterdamProject/snake.html>
+
+(The old `simulator.html` URL still works — it redirects to the front door.)
 
 ## Play locally
 
@@ -41,10 +52,10 @@ root:
 python3 -m http.server 8741
 ```
 
-Then open <http://localhost:8741> (snake) or
-<http://localhost:8741/simulator.html> (simulator).
+Then open <http://localhost:8741> — or <http://localhost:8741/snake.html> for
+the 2D game on its own.
 
-Want a different city? Add a seed: `http://localhost:8741/simulator.html?seed=42`.
+Want a different city? Add a seed: `http://localhost:8741/?seed=42`.
 
 ## Controls
 
@@ -57,6 +68,7 @@ Want a different city? Add a seed: `http://localhost:8741/simulator.html?seed=42
 | `B` | rent / moor a canal sloop |
 | `F` | eat at a snack cart |
 | `T` | use a krul urinoir |
+| `G` | duck into Koffieshop De Slang (the 2D game) |
 | `SHIFT` | sprint |
 | `C` | toggle chase / overview camera |
 
@@ -116,8 +128,11 @@ Want a different city? Add a seed: `http://localhost:8741/simulator.html?seed=42
 ## Repository layout
 
 ```
-index.html        🐍 Amsterdam Snake (self-contained: HTML + CSS + JS)
-simulator.html    🚲 Amsterdam Simulator entry: HUD, splash, import map
+index.html        🚲 the front door: 3D simulator HUD, splash, import map,
+                  and the Koffieshop De Slang overlay into the 2D game
+snake.html        🐍 Amsterdam Snake (self-contained: HTML + CSS + JS);
+                  runs inside the koffieshop iframe and standalone
+simulator.html    redirect stub for old links → index.html
 src/main.js       bootstrap + game loop
 src/city.js       procedural city generation + spatial queries
 src/player.js     player bike, physics, camera
@@ -126,6 +141,7 @@ src/transit.js    buses, bus stops, the 50/50 QR scanner
 src/cuisine.js    snack carts, krul urinoirs, hunger/bowel survival meters
 src/wallen.js     De Wallen life: dancers, hearts, charm streaks, district muziek
 src/boating.js    sloop rental docks, boat driving, narrated canal tours
+src/koffieshop.js the De Slang storefront: the 3D door into snake.html
 src/weather.js    weather state machine, rain, day/night cycle
 src/pickups.js    stroopwafels
 vendor/           three.module.js (r160)
