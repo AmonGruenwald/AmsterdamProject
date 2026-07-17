@@ -76,11 +76,22 @@
   /* Overlays */
   #overlay, #shop {
     position: absolute; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 12px; text-align: center;
+    align-items: center; justify-content: center; gap: 11px; text-align: center;
     background: rgba(6,10,18,.82); backdrop-filter: blur(3px);
-    border-radius: 14px; padding: 18px;
+    border-radius: 14px; padding: 16px; overflow-y: auto;
   }
   #overlay.hidden, #shop.hidden { display: none; }
+  #splash-art { width: min(250px, 56vw); height: auto; aspect-ratio: 280 / 165;
+    flex: 0 0 auto; margin-bottom: 2px; filter: drop-shadow(0 8px 16px rgba(0,0,0,.45)); }
+  @media (max-height: 700px) { #splash-art { width: min(210px, 46vw); } }
+  #splash-art .bob { animation: bob 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  #splash-art .bubble  { animation: rise 2.6s ease-in infinite; transform-box: fill-box; }
+  #splash-art .bubble2 { animation: rise 2.6s ease-in .8s infinite; transform-box: fill-box; }
+  #splash-art .bubble3 { animation: rise 2.6s ease-in 1.5s infinite; transform-box: fill-box; }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(2.5px); } }
+  @keyframes rise { 0% { opacity: .9; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-16px); } }
+  @media (prefers-reduced-motion: reduce) { #splash-art .bob, #splash-art .bubble, #splash-art .bubble2, #splash-art .bubble3 { animation: none; } }
+  .splash-tag { margin: 0; font-style: italic; color: #8fa3bd; font-size: 13px; }
   #overlay h1 { margin: 0; font-size: clamp(26px, 7vw, 40px); letter-spacing: .5px; }
   #overlay h1 span { color: var(--bike); }
   #overlay p { margin: 0; max-width: 30ch; line-height: 1.5; color: #cdd6e4; font-size: clamp(13px, 3.6vw, 16px); }
@@ -155,10 +166,52 @@
     <button id="pause-btn" hidden>⏸ Pause</button>
 
     <div id="overlay">
+      <svg id="splash-art" width="280" height="165" viewBox="0 0 280 165" role="img"
+           aria-label="A bicycle sinking into an Amsterdam canal while a heron watches from a mooring post.">
+        <!-- canal -->
+        <path d="M0 104 Q70 96 140 104 T280 104 L280 165 L0 165 Z" fill="#16324f"/>
+        <path d="M0 104 Q70 96 140 104 T280 104" fill="none" stroke="#2a5578" stroke-width="2" opacity=".7"/>
+        <!-- floating stroopwafel -->
+        <g>
+          <circle cx="52" cy="107" r="9" fill="#d9a441"/>
+          <path d="M44 107 H60 M46 101 L58 113 M46 113 L58 101" stroke="rgba(90,54,12,.5)" stroke-width="1.5"/>
+        </g>
+        <!-- bike, sinking (tilted) and gently bobbing -->
+        <g transform="rotate(-13 110 96)">
+          <g class="bob" stroke="#f4a340" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="92" cy="86" r="19"/>
+            <circle cx="150" cy="112" r="19" opacity=".4"/>
+            <path d="M92 86 L128 90 L150 112 M128 90 L120 66 M150 112 L120 66"/>
+            <path d="M112 64 L128 65"/>
+            <path d="M92 86 L86 62 M79 60 L95 63"/>
+          </g>
+        </g>
+        <!-- bubbles -->
+        <g fill="#bcd6ea">
+          <circle class="bubble"  cx="150" cy="100" r="3"/>
+          <circle class="bubble2" cx="160" cy="98"  r="2.4"/>
+          <circle class="bubble3" cx="144" cy="99"  r="1.8"/>
+        </g>
+        <!-- mooring post + heron, watching -->
+        <rect x="236" y="98" width="8" height="60" rx="3" fill="#6b4f34"/>
+        <rect x="232" y="95" width="16" height="6" rx="3" fill="#7d5d3e"/>
+        <g>
+          <path d="M239 96 L240 80 M243 96 L241 80" stroke="#c9a15a" stroke-width="2"/>
+          <ellipse cx="240" cy="74" rx="13" ry="8" fill="#9aa7b3"/>
+          <ellipse cx="243" cy="75" rx="9" ry="5" fill="#8592a0"/>
+          <path d="M252 72 L263 76 L252 78 Z" fill="#8592a0"/>
+          <path d="M231 70 C226 60 236 52 244 46" stroke="#9aa7b3" stroke-width="5" fill="none" stroke-linecap="round"/>
+          <circle cx="246" cy="44" r="4.5" fill="#9aa7b3"/>
+          <path d="M248 40 L254 37" stroke="#9aa7b3" stroke-width="2"/>
+          <path d="M242 46 L227 51" stroke="#f0b24a" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="244.5" cy="43" r="1" fill="#12202f"/>
+        </g>
+      </svg>
       <h1>🚲 Amsterdam <span>Snake</span></h1>
-      <p>Ride the canal ring, eat the stroopwafels, and duck into a
-         <b>koffieshop</b> to spend them on questionable power-ups.
-         Don't ride into a wall — or, for once, yourself.</p>
+      <p>Ride the canal ring, eat stroopwafels, and duck into a
+         <b>koffieshop</b> for questionable power-ups. Don't ride into a
+         wall — or, for once, yourself.</p>
+      <p class="splash-tag">Nine million bikes in this city. Try to keep this one dry.</p>
       <button class="play" id="play-btn">Start cycling</button>
       <p class="hint kb">Arrow keys / WASD &nbsp;·&nbsp; P pause &nbsp;·&nbsp; M mute</p>
       <p class="hint">Swipe or use the pad on mobile</p>
@@ -343,6 +396,14 @@
     "The bike accepts the wall. The wall does not accept the bike.",
     "A tram would have been kinder.",
     "Ambitious cornering. Poor outcome.",
+    "The heron saw the whole thing. The heron says nothing.",
+    "You have reached your final destination. It is a canal.",
+    "Nine million bikes in this city. This one's in the water.",
+    "Somewhere, a rental company is preparing an invoice.",
+    "Physics: 1. You: 0. Stroopwafels: still delicious.",
+    "The canal files this under 'Tuesday'.",
+    "Even the ducks are judging you.",
+    "That'll be a €50 fishing-out fee. Pin of contant?",
   ];
 
   /* ---------------- Shop items ---------------- */

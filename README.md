@@ -18,6 +18,13 @@ step, no backend, no `npm install` — plain static files that run fully offline
 
 ![Genre: cycling & light suffering](https://img.shields.io/badge/genre-cycling%20%26%20light%20suffering-orange)
 
+<p align="center">
+  <img src="docs/amsterdam-snake.png" width="420"
+       alt="Amsterdam Snake title screen: a bicycle sinking into a canal while a heron watches from a mooring post." />
+  <br />
+  <em>Pictured: a bike in a canal, and a heron who has watched this happen many, many times.</em>
+</p>
+
 ## Play online
 
 Hosted on GitHub Pages (static, no backend):
