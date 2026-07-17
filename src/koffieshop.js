@@ -1,6 +1,7 @@
 // Koffieshop De Slang — the door between the two Amsterdams.
-// Duck inside and the city folds into a 2D arcade snake game (snake.html).
+// Duck inside and the city folds into the 2D arcade game (src/deslang.js).
 import * as THREE from 'three';
+import { WORLD } from './city.js';
 
 const SHOP_POS = { x: -52, z: 14.5 }; // pavement strip on the De Wallen canal's south quay, west of the district
 
@@ -78,4 +79,38 @@ export class Koffieshop {
     this.curl.rotation.y = elapsed * 0.6;
     this.curl.position.y = 6.6 + Math.sin(elapsed * 1.2) * 0.12;
   }
+}
+
+// Tulip Mania, escaped into three dimensions: when the secret is unlocked
+// in the back room, the quays of the entire city burst into bloom.
+const TULIP_COLORS = ['#ff4d6d', '#ffd23f', '#ff6fae', '#a15fdc', '#ff8c42', '#fff0f5'];
+
+export function plantTulips(scene, rng) {
+  const group = new THREE.Group();
+  const stemGeo = new THREE.CylinderGeometry(0.03, 0.04, 0.55, 5);
+  const stemMat = new THREE.MeshLambertMaterial({ color: '#2f6b2f' });
+  const headGeo = new THREE.SphereGeometry(0.14, 6, 6);
+  const headMats = TULIP_COLORS.map((c) =>
+    new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: 0.25 }));
+
+  for (const cz of WORLD.canalZ) {
+    for (const side of [-1, 1]) {
+      const z0 = cz + side * (WORLD.canalHalf + 1.0);
+      for (let x = -WORLD.blockEdge; x <= WORLD.blockEdge; x += 4.5) {
+        if (WORLD.bridgeX.some((bx) => Math.abs(x - bx) < 7)) continue;
+        for (let i = 0; i < 3; i++) {
+          const stem = new THREE.Mesh(stemGeo, stemMat);
+          const px = x + (rng() - 0.5) * 2.2, pz = z0 + (rng() - 0.5) * 0.8;
+          stem.position.set(px, 0.28, pz);
+          const head = new THREE.Mesh(headGeo, headMats[Math.floor(rng() * headMats.length)]);
+          head.position.set(px, 0.6, pz);
+          head.scale.y = 1.35;
+          stem.rotation.z = (rng() - 0.5) * 0.15;
+          group.add(stem, head);
+        }
+      }
+    }
+  }
+  scene.add(group);
+  return group;
 }

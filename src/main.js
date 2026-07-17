@@ -5,7 +5,8 @@ import { Transit } from './transit.js';
 import { buildCuisine, Survival } from './cuisine.js';
 import { Wallen } from './wallen.js';
 import { Boating } from './boating.js';
-import { Koffieshop } from './koffieshop.js';
+import { Koffieshop, plantTulips } from './koffieshop.js';
+import { DeSlang } from './deslang.js';
 import { Player } from './player.js';
 import { Weather, DayCycle } from './weather.js';
 import { Pickups } from './pickups.js';
@@ -103,36 +104,29 @@ player.onSplash = () => {
   toast('💦 SPLASH — the canal accepts your bike, as it accepts all bikes.');
 };
 
-// --- Koffieshop De Slang: the passage into the 2D game (snake.html) ---------
-const SNAKE_BEST_KEY = 'amsterdam-snake-best';
-let snakeOpen = false;
-let snakeBestBefore = 0;
-function enterSnake() {
-  snakeOpen = true;
-  snakeBestBefore = parseInt(localStorage.getItem(SNAKE_BEST_KEY) || '0', 10) || 0;
-  const frame = $('snake-frame');
-  if (!frame.src) frame.src = './snake.html';
-  $('snake-house').classList.add('open');
-  setTimeout(() => frame.focus(), 550); // hand the keyboard through the door
-}
-function exitSnake() {
-  if (!snakeOpen) return;
-  snakeOpen = false;
-  $('snake-house').classList.remove('open');
-  const best = parseInt(localStorage.getItem(SNAKE_BEST_KEY) || '0', 10) || 0;
-  const gain = Math.max(0, best - snakeBestBefore);
-  if (gain > 0) {
-    stats.waffles += gain;
-    $('s-waffles').textContent = stats.waffles;
-    toast(`🐍 New high score in there! ${gain} stroopwafels materialise in your pocket. Don't ask how.`, 4200);
-  } else {
-    toast('☕ You step back outside, blinking. Time moves differently in De Slang.', 3600);
-  }
-}
-$('snake-exit').addEventListener('click', exitSnake);
+// --- Koffieshop De Slang: the 2D Amsterdam inside (src/deslang.js) ----------
+// One wallet: you walk in with your street stroopwafels and gamble with those.
+let tulipGarden = null;
+const deslang = new DeSlang({
+  getWallet: () => stats.waffles,
+  setWallet: (w) => {
+    stats.waffles = w;
+    $('s-waffles').textContent = w;
+  },
+  onExit: () => {
+    toast(tulipGarden && !tulipGarden.seen
+      ? '🌷 You step outside and the whole city has bloomed. 1637 all over again.'
+      : '☕ You step back outside, blinking. Time moves differently in De Slang.', 4000);
+    if (tulipGarden) tulipGarden.seen = true;
+  },
+  onTulipMania: () => {
+    // the mania escapes the back room: every quay in the 3D city blooms
+    if (!tulipGarden) tulipGarden = { group: plantTulips(scene, rng), seen: false };
+  },
+});
 
 addEventListener('keydown', (e) => {
-  if (snakeOpen) { if (e.code === 'Escape') exitSnake(); return; }
+  if (deslang.isOpen) return; // De Slang handles its own keys (incl. Escape)
   if (e.code === 'Space') {
     e.preventDefault();
     stats.bells++;
@@ -155,7 +149,7 @@ addEventListener('keydown', (e) => {
     else if (survival.hunger < 40) toast('🍽 Nothing to eat here. Follow your nose to a snack cart.');
   }
   if (e.code === 'KeyG' && running && !transit.riding && !boating.boating) {
-    if (koffieshop.near(player.pos)) enterSnake();
+    if (koffieshop.near(player.pos)) deslang.open();
   }
   if (e.code === 'KeyT' && running && !transit.riding && !boating.boating) {
     if (survival.nearestToilet(toilets, player.pos)) survival.relieve();
@@ -177,7 +171,7 @@ let hudClock = 0;
 // debug hook for headless verification (see CLAUDE.md)
 window.__ams = {
   player, day, transit, weather, survival, wallen, stalls, toilets, boating,
-  koffieshop, enterSnake, exitSnake,
+  koffieshop, deslang, stats,
 };
 
 const clock = new THREE.Clock();

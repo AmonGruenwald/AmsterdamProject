@@ -47,19 +47,138 @@
   #splash button:hover { background: #ffa25e; }
   #splash .keys { font-size: 13px; color: #9fb0c8; }
 
-  /* Koffieshop De Slang: the door into the 2D game */
-  #snake-house {
-    position: fixed; inset: 0; z-index: 20; background: #0b1220;
+  /* ---- Koffieshop De Slang: the 2D Amsterdam inside (src/deslang.js) ---- */
+  #deslang {
+    --canal: #16324f; --canal-dark: #0b1220; --waffle: #d9a441;
+    --bike: #f4a340; --bike-dark: #c9791f; --ink: #eef3fa;
+    position: fixed; inset: 0; z-index: 20; color: var(--ink);
+    background: radial-gradient(ellipse at 50% 0%, #16324f, #0b1220 70%);
     opacity: 0; pointer-events: none; transition: opacity .5s ease;
+    user-select: none; -webkit-user-select: none; touch-action: none;
   }
-  #snake-house.open { opacity: 1; pointer-events: auto; }
-  #snake-house iframe { width: 100%; height: 100%; border: 0; display: block; }
-  #snake-exit {
-    position: absolute; top: 12px; left: 12px; z-index: 21; cursor: pointer;
+  #deslang.open { opacity: 1; pointer-events: auto; }
+  #ds-exit {
+    position: absolute; top: 12px; left: 12px; z-index: 26; cursor: pointer;
     background: rgba(10,14,22,.75); color: #fff; border: 1px solid rgba(255,255,255,.25);
     border-radius: 10px; padding: 8px 14px; font-size: 14px; font-family: inherit;
   }
-  #snake-exit:hover { background: rgba(30,40,60,.85); }
+  #ds-exit:hover { background: rgba(30,40,60,.85); }
+  #ds-wrap {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px; padding: 8px;
+  }
+  #ds-hud {
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: center;
+    background: rgba(10,14,22,.55); backdrop-filter: blur(6px);
+    padding: 8px 14px; border-radius: 12px; font-size: 15px;
+    border: 1px solid rgba(255,255,255,.12);
+  }
+  #ds-hud .stat { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+  #ds-hud b { color: var(--bike); font-variant-numeric: tabular-nums; }
+  #ds-mute {
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.15);
+    color: var(--ink); border-radius: 9px; padding: 4px 9px; font-size: 15px; cursor: pointer;
+  }
+  #ds-fx {
+    min-height: 20px; display: flex; gap: 8px; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; letter-spacing: .2px;
+  }
+  #deslang .fx-chip { padding: 3px 10px; border-radius: 20px; background: rgba(255,255,255,.1); }
+  #deslang .fx-espresso { color: #ffcf87; box-shadow: inset 0 0 0 1px rgba(255,180,80,.5); }
+  #deslang .fx-cake { color: #ff9ff3; box-shadow: inset 0 0 0 1px rgba(255,120,220,.5); }
+  #deslang .fx-ghost { color: #a9e7ff; box-shadow: inset 0 0 0 1px rgba(120,210,255,.5); }
+  #deslang .fx-combo { color: #ffd36b; box-shadow: inset 0 0 0 1px rgba(255,200,90,.6); }
+  #deslang .fx-tulip { color: #ff6fae; box-shadow: inset 0 0 0 1px rgba(255,110,175,.6); }
+  #ds-holder { position: relative; }
+  #ds-board {
+    display: block; border-radius: 14px; touch-action: none; background: #0e2036;
+    box-shadow: 0 10px 40px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+  #ds-toasts {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+    pointer-events: none; z-index: 24; width: max-content; max-width: 92%;
+  }
+  .ds-toast {
+    background: rgba(10,14,22,.82); color: var(--ink); border: 1px solid rgba(255,255,255,.16);
+    padding: 7px 14px; border-radius: 999px; font-size: 13.5px; font-weight: 700;
+    text-align: center; box-shadow: 0 6px 18px rgba(0,0,0,.4);
+    animation: dsToastIn .25s ease-out, dsToastOut .4s ease-in forwards;
+    animation-delay: 0s, var(--hold, 1.8s);
+  }
+  @keyframes dsToastIn { from { opacity: 0; transform: translateY(-8px) scale(.96); } to { opacity: 1; } }
+  @keyframes dsToastOut { to { opacity: 0; transform: translateY(-8px) scale(.96); } }
+  #ds-overlay, #ds-shop {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 11px; text-align: center;
+    background: rgba(6,10,18,.82); backdrop-filter: blur(3px);
+    border-radius: 14px; padding: 16px; overflow-y: auto; z-index: 23;
+  }
+  #ds-overlay.hidden, #ds-shop.hidden { display: none; }
+  #ds-splash-art { width: min(250px, 56vw); height: auto; aspect-ratio: 280 / 165;
+    flex: 0 0 auto; margin-bottom: 2px; filter: drop-shadow(0 8px 16px rgba(0,0,0,.45)); }
+  #ds-splash-art .bob { animation: dsBob 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  #ds-splash-art .bubble  { animation: dsRise 2.6s ease-in infinite; transform-box: fill-box; }
+  #ds-splash-art .bubble2 { animation: dsRise 2.6s ease-in .8s infinite; transform-box: fill-box; }
+  #ds-splash-art .bubble3 { animation: dsRise 2.6s ease-in 1.5s infinite; transform-box: fill-box; }
+  @keyframes dsBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(2.5px); } }
+  @keyframes dsRise { 0% { opacity: .9; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-16px); } }
+  @media (prefers-reduced-motion: reduce) { #ds-splash-art .bob, #ds-splash-art .bubble, #ds-splash-art .bubble2, #ds-splash-art .bubble3 { animation: none; } }
+  #deslang .splash-tag { margin: 0; font-style: italic; color: #8fa3bd; font-size: 13px; }
+  #ds-overlay h1 { margin: 0; font-size: clamp(26px, 7vw, 40px); letter-spacing: .5px; }
+  #ds-overlay h1 span { color: var(--bike); }
+  #ds-overlay p { margin: 0; max-width: 32ch; line-height: 1.5; color: #cdd6e4; font-size: clamp(13px, 3.6vw, 16px); }
+  #ds-overlay .score-line { font-size: clamp(15px, 4.4vw, 19px); }
+  #ds-overlay .score-line b { color: var(--bike); }
+  #deslang button.ds-play {
+    margin-top: 6px; font-size: 18px; padding: 13px 34px; cursor: pointer;
+    background: var(--bike); color: #1a1005; border: none; border-radius: 12px;
+    font-weight: 800; letter-spacing: .3px;
+  }
+  #deslang button.ds-play:active { transform: translateY(1px); }
+  #deslang .hint { font-size: 12.5px; color: #9fb0c8; }
+  #deslang .hint a { color: var(--bike); }
+  #ds-shop h2 { margin: 0; font-size: clamp(22px, 6vw, 30px); }
+  #ds-shop .shop-sub { margin: 0; color: #cdd6e4; font-size: 14px; }
+  #ds-shop .shop-sub b { color: var(--bike); }
+  #ds-shop-items { display: grid; gap: 9px; width: min(360px, 92%); }
+  #deslang .shop-item {
+    display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14);
+    color: var(--ink); border-radius: 12px; padding: 9px 12px; font: inherit;
+  }
+  #deslang .shop-item:enabled:active { transform: translateY(1px); }
+  #deslang .shop-item:disabled { opacity: .4; cursor: not-allowed; }
+  #deslang .shop-item .emoji { font-size: 26px; width: 34px; text-align: center; }
+  #deslang .shop-item .txt { flex: 1; }
+  #deslang .shop-item .name { display: block; font-weight: 700; font-size: 15px; margin-bottom: 2px; }
+  #deslang .shop-item .desc { display: block; font-size: 12px; color: #b4c1d4; line-height: 1.35; }
+  #deslang .shop-item .cost { font-weight: 800; color: var(--bike); white-space: nowrap; }
+  #ds-shop-leave {
+    margin-top: 4px; background: transparent; color: #9fb0c8; border: 1px solid rgba(255,255,255,.18);
+    border-radius: 10px; padding: 8px 18px; font: inherit; cursor: pointer;
+  }
+  #ds-pause {
+    position: absolute; top: 8px; right: 8px; z-index: 25;
+    background: rgba(10,14,22,.6); color: var(--ink); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 10px; padding: 6px 12px; font-size: 14px; cursor: pointer;
+  }
+  #ds-pad {
+    display: none; gap: 10px; margin-top: 2px;
+    grid-template-columns: repeat(3, 62px); grid-template-rows: repeat(2, 62px);
+    grid-template-areas: ". up ." "left down right";
+  }
+  #ds-pad button {
+    width: 62px; height: 62px; font-size: 26px; border-radius: 16px;
+    background: rgba(244,163,64,.16); color: var(--bike);
+    border: 1px solid rgba(244,163,64,.4);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #ds-pad button:active { background: rgba(244,163,64,.34); }
+  #ds-pad .up { grid-area: up; } #ds-pad .down { grid-area: down; }
+  #ds-pad .left { grid-area: left; } #ds-pad .right { grid-area: right; }
+  #deslang.touch #ds-pad { display: grid; }
+  #deslang.touch .hint.kb { display: none; }
 </style>
 </head>
 <body>
@@ -78,9 +197,84 @@
 </div>
 <div class="hud" id="hud-msg"></div>
 
-<div id="snake-house">
-  <button id="snake-exit">🚪 ← Back to the street</button>
-  <iframe id="snake-frame" title="Amsterdam Snake — inside Koffieshop De Slang"></iframe>
+<div id="deslang">
+  <button id="ds-exit">🚪 ← Back to the street</button>
+  <div id="ds-wrap">
+    <div id="ds-hud">
+      <div class="stat" id="ds-secret-tap">🧇 <b id="ds-wallet">0</b></div>
+      <div class="stat">🏆 <b id="ds-best">0</b></div>
+      <div class="stat">⚡ <b id="ds-speed">1</b></div>
+      <button id="ds-mute" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div id="ds-fx"></div>
+
+    <div id="ds-holder">
+      <canvas id="ds-board" width="480" height="480"></canvas>
+      <div id="ds-toasts"></div>
+      <button id="ds-pause" hidden>⏸ Pause</button>
+
+      <div id="ds-overlay">
+        <svg id="ds-splash-art" width="280" height="165" viewBox="0 0 280 165" role="img"
+             aria-label="A bicycle sinking into an Amsterdam canal while a heron watches from a mooring post.">
+          <path d="M0 104 Q70 96 140 104 T280 104 L280 165 L0 165 Z" fill="#16324f"/>
+          <path d="M0 104 Q70 96 140 104 T280 104" fill="none" stroke="#2a5578" stroke-width="2" opacity=".7"/>
+          <g>
+            <circle cx="52" cy="107" r="9" fill="#d9a441"/>
+            <path d="M44 107 H60 M46 101 L58 113 M46 113 L58 101" stroke="rgba(90,54,12,.5)" stroke-width="1.5"/>
+          </g>
+          <g transform="rotate(-13 110 96)">
+            <g class="bob" stroke="#f4a340" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="92" cy="86" r="19"/>
+              <circle cx="150" cy="112" r="19" opacity=".4"/>
+              <path d="M92 86 L128 90 L150 112 M128 90 L120 66 M150 112 L120 66"/>
+              <path d="M112 64 L128 65"/>
+              <path d="M92 86 L86 62 M79 60 L95 63"/>
+            </g>
+          </g>
+          <g fill="#bcd6ea">
+            <circle class="bubble"  cx="150" cy="100" r="3"/>
+            <circle class="bubble2" cx="160" cy="98"  r="2.4"/>
+            <circle class="bubble3" cx="144" cy="99"  r="1.8"/>
+          </g>
+          <rect x="236" y="98" width="8" height="60" rx="3" fill="#6b4f34"/>
+          <rect x="232" y="95" width="16" height="6" rx="3" fill="#7d5d3e"/>
+          <g>
+            <path d="M239 96 L240 80 M243 96 L241 80" stroke="#c9a15a" stroke-width="2"/>
+            <ellipse cx="240" cy="74" rx="13" ry="8" fill="#9aa7b3"/>
+            <ellipse cx="243" cy="75" rx="9" ry="5" fill="#8592a0"/>
+            <path d="M252 72 L263 76 L252 78 Z" fill="#8592a0"/>
+            <path d="M231 70 C226 60 236 52 244 46" stroke="#9aa7b3" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <circle cx="246" cy="44" r="4.5" fill="#9aa7b3"/>
+            <path d="M248 40 L254 37" stroke="#9aa7b3" stroke-width="2"/>
+            <path d="M242 46 L227 51" stroke="#f0b24a" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="244.5" cy="43" r="1" fill="#12202f"/>
+          </g>
+        </svg>
+        <h1>🚲 Amsterdam <span>Snake</span></h1>
+        <p>The back room of De Slang. Ride the canal ring, eat stroopwafels, and
+           duck into a <b>koffieshop</b> for questionable power-ups. Don't ride
+           into a wall — or, for once, yourself.</p>
+        <p class="splash-tag">Nine million bikes in this city. Try to keep this one dry.</p>
+        <button class="ds-play" id="ds-play">Start cycling</button>
+        <p class="hint kb">Arrow keys / WASD &nbsp;·&nbsp; P pause &nbsp;·&nbsp; M mute &nbsp;·&nbsp; ESC leave</p>
+        <p class="hint">Swipe or use the pad on mobile</p>
+      </div>
+
+      <div id="ds-shop" class="hidden">
+        <h2>☕ Koffieshop</h2>
+        <p class="shop-sub">You have <b id="ds-shop-wallet">0</b> 🧇. Spend wisely — or don't.</p>
+        <div id="ds-shop-items"></div>
+        <button id="ds-shop-leave">Leave — just here for the vibes</button>
+      </div>
+    </div>
+
+    <div id="ds-pad">
+      <button class="up"    data-dir="up"    aria-label="Up">▲</button>
+      <button class="left"  data-dir="left"  aria-label="Left">◀</button>
+      <button class="down"  data-dir="down"  aria-label="Down">▼</button>
+      <button class="right" data-dir="right" aria-label="Right">▶</button>
+    </div>
+  </div>
 </div>
 <div class="hud" id="hud-controls">W/S ride · A/D steer · SPACE bell · E bus · B boat · F eat · T toilet · C camera</div>
 
