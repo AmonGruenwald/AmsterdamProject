@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Amsterdam Simulator</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0e14; font-family: "Segoe UI", system-ui, sans-serif; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  .hud {
+    position: fixed; pointer-events: none; color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,.7); user-select: none;
+  }
+  #hud-top {
+    top: 12px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 18px; align-items: center;
+    background: rgba(10, 14, 22, .55); backdrop-filter: blur(6px);
+    padding: 8px 18px; border-radius: 12px; font-size: 15px;
+    border: 1px solid rgba(255,255,255,.12);
+  }
+  #hud-top .stat { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+  #hud-msg {
+    bottom: 88px; left: 50%; transform: translateX(-50%);
+    font-size: 20px; font-weight: 600; opacity: 0; transition: opacity .3s;
+    background: rgba(10,14,22,.6); padding: 8px 20px; border-radius: 10px;
+  }
+  #hud-controls {
+    bottom: 14px; left: 50%; transform: translateX(-50%);
+    font-size: 12.5px; opacity: .75; letter-spacing: .3px;
+    background: rgba(10,14,22,.45); padding: 6px 14px; border-radius: 8px;
+  }
+  #splash {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    background: radial-gradient(ellipse at center, rgba(13,20,33,.88), rgba(5,8,14,.96));
+    color: #fff; z-index: 10; text-align: center; padding: 20px;
+  }
+  #splash h1 { font-size: 42px; margin: 0; letter-spacing: 1px; }
+  #splash h1 span { color: #ff8c42; }
+  #splash p { max-width: 560px; line-height: 1.5; color: #cdd6e4; margin: 0; }
+  #splash button {
+    margin-top: 10px; font-size: 18px; padding: 12px 34px; cursor: pointer;
+    background: #ff8c42; color: #1a1005; border: none; border-radius: 10px; font-weight: 700;
+  }
+  #splash button:hover { background: #ffa25e; }
+  #splash .keys { font-size: 13px; color: #9fb0c8; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div class="hud" id="hud-top">
+  <div class="stat">🧇 <span id="s-waffles">0</span></div>
+  <div class="stat">🔔 <span id="s-bells">0</span></div>
+  <div class="stat">💦 <span id="s-splashes">0</span></div>
+  <div class="stat">🕐 <span id="s-time">08:00</span></div>
+  <div class="stat"><span id="s-weather">☁️ cloudy</span></div>
+</div>
+<div class="hud" id="hud-msg"></div>
+<div class="hud" id="hud-controls">W/S ride · A/D steer · SPACE bell · SHIFT sprint · C camera</div>
+
+<div id="splash">
+  <h1>🚲 Amsterdam <span>Simulator</span></h1>
+  <p>Cycle the canal ring. Collect stroopwafels. Ring your bell at tourists
+     drifting into the bike lane. Mind the canals — the water accepts all bikes,
+     and it will accept yours.</p>
+  <p class="keys">W/S ride &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; SPACE bell &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; C camera</p>
+  <button id="start-btn">Start cycling</button>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

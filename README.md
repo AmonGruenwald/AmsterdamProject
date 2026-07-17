@@ -1,0 +1,67 @@
+# 🚲 Amsterdam Simulator
+
+A browser-based 3D simulation of the only city where the canals eat bicycles.
+
+Cycle through a procedurally generated canal district — leaning gabled canal
+houses, bridges, boats, a tram with right of way, and weather that is legally
+required to include drizzle. Built with Three.js, zero build step, fully
+offline.
+
+![Genre: cycling & light suffering](https://img.shields.io/badge/genre-cycling%20%26%20light%20suffering-orange)
+
+## Play
+
+ES modules need a web server, so from the repo root:
+
+```bash
+python3 -m http.server 8741
+```
+
+Then open <http://localhost:8741>.
+
+Want a different city? Add a seed: `http://localhost:8741/?seed=42`.
+
+## Controls
+
+| Key | Action |
+|---|---|
+| `W` / `S` | pedal / brake |
+| `A` / `D` | steer |
+| `SPACE` | ring bell (scatters nearby tourists) |
+| `SHIFT` | sprint |
+| `C` | toggle chase / overview camera |
+
+## Gameplay
+
+- 🧇 **Stroopwafels** — glowing, spinning, scattered along the quays. Ride
+  through them. They respawn; happiness is renewable.
+- 🔔 **The bell** — tourists drift into the fietspad. Ring within range and
+  watch them scatter. The HUD keeps score.
+- 💦 **The canals** — ride in and the water accepts your bike, as it accepts
+  all bikes. You respawn on the quay; the splash counter remembers.
+- 🌦 **Weather** — a Markov chain calibrated to the Dutch sky: sunny is a state
+  you pass through, drizzle is a state you live in.
+- 🌅 **Day/night** — a full day runs in 20 real minutes, from morning light to
+  lamplit canals.
+
+## Tech
+
+- [Three.js](https://threejs.org/) r160, vendored in `vendor/` — no CDN, no
+  `npm install`, no bundler. Plain ES modules + an import map.
+- Procedural city generation from a seeded RNG (mulberry32): canal grid,
+  ~250 canal houses with canvas-generated facades, stepped and pointed gables,
+  and the traditional structural forward lean.
+- Simple 2D AABB collision; arcade bike physics; chase camera.
+
+## Repository layout
+
+```
+index.html        HUD, splash screen, import map
+src/main.js       bootstrap + game loop
+src/city.js       procedural city generation + spatial queries
+src/player.js     player bike, physics, camera
+src/npcs.js       NPC cyclists, tourists, boats, tram
+src/weather.js    weather state machine, rain, day/night cycle
+src/pickups.js    stroopwafels
+vendor/           three.module.js (r160)
+```
