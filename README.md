@@ -69,7 +69,8 @@ Want a different city? Add a seed: `http://localhost:8741/?seed=42`.
 | `B` | rent / moor a canal sloop |
 | `F` | eat at a snack cart |
 | `T` | use a krul urinoir |
-| `G` | duck into Koffieshop De Slang (the 2D game) |
+| `G` | duck into a koffieshop (the 2D game) |
+| `Q` | dance with a window in De Wallen |
 
 Inside De Slang: arrows/WASD steer, `P` pause, `M` mute, `1`–`5` buy in the
 shop, `ESC` leave. Swipe or D-pad on touch screens.
@@ -109,6 +110,15 @@ shop, `ESC` leave. Swipe or D-pad on touch screens.
   synthesised bass groove that fades in when you cross the border, like the
   neighbourhood is playing it just for you. Ringing your bell in De Wallen is
   understood by everyone as flirting. Silhouette-level tasteful throughout.
+  And now you can **dance**: stop by a window, press `Q`, and the district
+  challenges you to a dance-off synced to its own bass groove — follow the
+  arrow steps on the beat. Dance flawlessly and stroopwafels rain from a
+  window; dance badly and you're told, kindly, that you dance like you cycle.
+- ☕ **The inner city** — between the two innermost canals, the koffieshop
+  density has reached municipal saturation: almost every building glows green
+  (De Groene Reiger, Space Kaas, Cloud Negen, Het Derde Wiel…). Every single
+  one of them can be entered with `G`. Every single one of them contains the
+  same back room. Nobody in Amsterdam finds this strange.
 - 🍟 **Local cuisine (survival)** — you burn calories out there. Hunger (🍟)
   drains as you ride; hit zero and you get *de hongerklop* — the bonk — and
   crawl until you eat. Six snack carts serve the classics: Hollandse Nieuwe,

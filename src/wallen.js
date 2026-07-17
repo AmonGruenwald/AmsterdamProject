@@ -12,6 +12,10 @@ const FLIRT_LINES = [
   '💋 Applause from a doorway as you pass. For the posture, surely.',
 ];
 
+const DANCE_KEYS = ['ArrowLeft', 'ArrowUp', 'ArrowDown', 'ArrowRight'];
+const DANCE_GLYPH = { ArrowLeft: '←', ArrowUp: '↑', ArrowDown: '↓', ArrowRight: '→' };
+const DANCE_BEAT = 0.68; // locked to WallenMuziek's tempo
+
 // the streak escalates; the district has noticed you noticing
 const STREAK_LINES = [
   '💘 Two windows are now competing for your attention. Diplomacy is required.',
@@ -171,6 +175,12 @@ export class Wallen {
     this.streak = 0;      // kisses without leaving the district
     this.muziek = new WallenMuziek();
 
+    // the dance-off
+    this.dancing = false;
+    this.onDanceEnd = null; // (hits, total) => void
+    this.danceEl = document.getElementById('dans');
+    this.danceSeqEl = document.getElementById('dans-seq');
+
     // pink shimmer on the canal water where the neon reflects
     this.shimmer = [];
     for (let i = 0; i < 6; i++) {
@@ -231,6 +241,82 @@ export class Wallen {
     h.sprite.scale.setScalar(0.45 + this.rng() * 0.4);
   }
 
+  /* ---- the dance-off: match the beat, charm the gracht ---- */
+
+  nearestDancer(pos, radius = 6) {
+    let best = null, bd = radius;
+    for (const d of this.dancers) {
+      const dist = d.position.distanceTo(pos);
+      if (dist < bd) { bd = dist; best = d; }
+    }
+    return best;
+  }
+
+  canDance(player) {
+    return !this.dancing
+      && inRedLight(player.pos.x, player.pos.z)
+      && Math.abs(player.speed) < 3
+      && !!this.nearestDancer(player.pos);
+  }
+
+  startDance(player) {
+    if (!this.canDance(player)) return false;
+    this.dancing = true;
+    this.dancePartner = this.nearestDancer(player.pos);
+    this.danceSeq = Array.from({ length: 8 }, () => DANCE_KEYS[Math.floor(this.rng() * 4)]);
+    this.danceIdx = -1;          // -1 = lead-in bar
+    this.danceTimer = DANCE_BEAT * 2; // two beats to find the rhythm
+    this.danceHits = 0;
+    this.danceHitThis = false;
+    this.muziek.init();
+    // render the sequence strip
+    this.danceSeqEl.innerHTML = this.danceSeq
+      .map((k, i) => `<span class="dans-key" data-i="${i}">${DANCE_GLYPH[k]}</span>`)
+      .join('');
+    this.danceEl.classList.add('open');
+    return true;
+  }
+
+  danceInput(code) {
+    if (!this.dancing || this.danceIdx < 0 || this.danceIdx >= this.danceSeq.length) return;
+    if (this.danceHitThis) return;
+    if (code === this.danceSeq[this.danceIdx]) {
+      this.danceHitThis = true;
+      this.danceHits++;
+      this._danceKeyEl(this.danceIdx)?.classList.add('hit');
+      if (this.dancePartner) this.spawnHeart(this.dancePartner.position, 0.5);
+    } else {
+      this.danceHitThis = true; // a wrong step is still a step
+      this._danceKeyEl(this.danceIdx)?.classList.add('miss');
+    }
+  }
+
+  _danceKeyEl(i) { return this.danceSeqEl.querySelector(`[data-i="${i}"]`); }
+
+  _danceTick(player) {
+    // close out the previous beat
+    if (this.danceIdx >= 0 && !this.danceHitThis) {
+      this._danceKeyEl(this.danceIdx)?.classList.add('miss');
+    }
+    this.danceIdx++;
+    this.danceHitThis = false;
+    if (this.danceIdx >= this.danceSeq.length) {
+      // finished — hold the strip a moment, then report
+      this.dancing = false;
+      const hits = this.danceHits;
+      setTimeout(() => this.danceEl.classList.remove('open'), 900);
+      if (this.dancePartner) {
+        this.dancePartner.userData.twirl = 0.95;
+        this.dancePartner.userData.baseY = this.dancePartner.rotation.y;
+      }
+      if (hits >= 6) { this.streak++; }
+      this.onDanceEnd?.(hits, this.danceSeq.length);
+      return;
+    }
+    this.danceSeqEl.querySelectorAll('.dans-key').forEach((el) => el.classList.remove('active'));
+    this._danceKeyEl(this.danceIdx)?.classList.add('active');
+  }
+
   // a bell rung inside the district gets a very different reception
   bellBurst(pos) {
     for (let i = 0; i < 9; i++) this.spawnHeart(pos, 1.4);
@@ -239,7 +325,22 @@ export class Wallen {
 
   update(dt, elapsed, player) {
     const inside = inRedLight(player.pos.x, player.pos.z);
-    this.muziek.update(dt, inside);
+    this.muziek.update(dt, inside || this.dancing);
+
+    // dance-off beat clock
+    if (this.dancing) {
+      player.speed = 0; // you cannot dance and pedal
+      this.danceTimer -= dt;
+      if (this.danceTimer <= 0) {
+        this.danceTimer += DANCE_BEAT;
+        this._danceTick(player);
+      }
+      // the partner really commits
+      if (this.dancePartner) {
+        const u = this.dancePartner.userData;
+        u.hips.position.x = Math.sin(elapsed * 4.6) * 0.2;
+      }
+    }
 
     // dancers dance — and sometimes twirl
     for (const d of this.dancers) {

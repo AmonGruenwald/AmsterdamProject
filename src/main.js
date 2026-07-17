@@ -48,7 +48,7 @@ addEventListener('resize', () => {
 });
 
 // --- world -------------------------------------------------------------------
-const { colliders, redlightFronts } = buildCity(scene, rng);
+const { colliders, redlightFronts, koffieshopFronts } = buildCity(scene, rng);
 const player = new Player(scene);
 const weather = new Weather(scene, rng);
 const day = new DayCycle(scene);
@@ -107,6 +107,7 @@ player.onSplash = () => {
 // --- Koffieshop De Slang: the 2D Amsterdam inside (src/deslang.js) ----------
 // One wallet: you walk in with your street stroopwafels and gamble with those.
 let tulipGarden = null;
+let enteredVia = 'slang';
 const deslang = new DeSlang({
   getWallet: () => stats.waffles,
   setWallet: (w) => {
@@ -116,7 +117,9 @@ const deslang = new DeSlang({
   onExit: () => {
     toast(tulipGarden && !tulipGarden.seen
       ? '🌷 You step outside and the whole city has bloomed. 1637 all over again.'
-      : '☕ You step back outside, blinking. Time moves differently in De Slang.', 4000);
+      : enteredVia === 'generic'
+        ? '☕ You leave. You could swear that was a different koffieshop. Same back room, though.'
+        : '☕ You step back outside, blinking. Time moves differently in De Slang.', 4000);
     if (tulipGarden) tulipGarden.seen = true;
   },
   onTulipMania: () => {
@@ -125,8 +128,44 @@ const deslang = new DeSlang({
   },
 });
 
+// any inner-city koffieshop door within reach? (they all share one back room)
+function nearKoffieshop(pos) {
+  for (const f of koffieshopFronts) {
+    if (Math.hypot(pos.x - f.x, pos.z - (f.z + f.n * 1.5)) < 5.5) return f;
+  }
+  return null;
+}
+
+wallen.onDanceEnd = (hits, total) => {
+  stats.kisses = wallen.kisses += hits;
+  $('s-kisses').textContent = wallen.kisses;
+  if (hits >= total - 1) {
+    stats.waffles += 8;
+    $('s-waffles').textContent = stats.waffles;
+    toast(`💃 Flawless. The whole gracht applauds. +${hits} 💋 and 8 stroopwafels rain from a window.`, 4200);
+  } else if (hits >= 5) {
+    stats.waffles += 4;
+    $('s-waffles').textContent = stats.waffles;
+    toast(`💃 Smooth enough. +${hits} 💋 and 4 stroopwafels, tossed with a wink.`, 4000);
+  } else if (hits >= 3) {
+    toast(`🕺 A respectable shuffle. +${hits} 💋. The dancer curtsies. You bow. A tram dings.`, 3800);
+  } else {
+    toast('🚲 You dance like you cycle: mostly forward. The window applauds out of politeness.', 3800);
+  }
+};
+
 addEventListener('keydown', (e) => {
   if (deslang.isOpen) return; // De Slang handles its own keys (incl. Escape)
+  if (wallen.dancing && e.code.startsWith('Arrow')) {
+    e.preventDefault();
+    wallen.danceInput(e.code);
+    return;
+  }
+  if (e.code === 'KeyQ' && running && !transit.riding && !boating.boating) {
+    if (wallen.startDance(player)) {
+      toast('💃 The window sets the tempo. Follow the arrows on the beat.', 2600);
+    }
+  }
   if (e.code === 'Space') {
     e.preventDefault();
     stats.bells++;
@@ -149,7 +188,13 @@ addEventListener('keydown', (e) => {
     else if (survival.hunger < 40) toast('🍽 Nothing to eat here. Follow your nose to a snack cart.');
   }
   if (e.code === 'KeyG' && running && !transit.riding && !boating.boating) {
-    if (koffieshop.near(player.pos)) deslang.open();
+    if (koffieshop.near(player.pos)) {
+      enteredVia = 'slang';
+      deslang.open();
+    } else if (nearKoffieshop(player.pos)) {
+      enteredVia = 'generic';
+      deslang.open();
+    }
   }
   if (e.code === 'KeyT' && running && !transit.riding && !boating.boating) {
     if (survival.nearestToilet(toilets, player.pos)) survival.relieve();
@@ -203,23 +248,31 @@ function frame() {
       b.style.color = survival.bowels > 90 ? '#ff6b6b' : survival.bowels > 70 ? '#ffc06b' : '';
     }
 
-    // contextual hint line: koffieshop > boat > bus > food > toilet > default
+    // contextual hint line: dance > koffieshops > boat > bus > food > toilet > default
+    const danceReady = !boating.boating && !wallen.dancing && wallen.canDance(player);
     const shopNear = !boating.boating && koffieshop.near(player.pos);
+    const genericShop = !boating.boating && !shopNear && nearKoffieshop(player.pos);
     const boatHint = boating.dockHint(player.pos);
     const busHint = boating.boating ? null : transit.boardingHint(player.pos);
     const stall = survival.nearestStall(stalls, player.pos);
     const krul = survival.nearestToilet(toilets, player.pos);
-    $('hud-controls').textContent = shopNear
-      ? '🐍 G — duck into Koffieshop De Slang'
-      : boatHint
-        ? '⛵ ' + boatHint
-        : busHint
-          ? '🚌 ' + busHint
-          : stall
-            ? `${stall.food.emoji} F — eat ${stall.food.name}`
-            : krul
-              ? '🚽 T — use the krul'
-              : 'W/S ride · A/D steer · SPACE bell · E bus · B boat · F eat · T toilet · G shop · C camera';
+    $('hud-controls').textContent = wallen.dancing
+      ? '💃 Follow the arrows — on the beat'
+      : danceReady
+        ? '💃 Q — dance with the window'
+        : shopNear
+          ? '🐍 G — duck into Koffieshop De Slang'
+          : genericShop
+            ? '☕ G — koffieshop (they are all the same inside)'
+            : boatHint
+              ? '⛵ ' + boatHint
+              : busHint
+                ? '🚌 ' + busHint
+                : stall
+                  ? `${stall.food.emoji} F — eat ${stall.food.name}`
+                  : krul
+                    ? '🚽 T — use the krul'
+                    : 'W/S ride · A/D steer · SPACE bell · E bus · B boat · F eat · T toilet · G shop · Q dance · C camera';
 
     // De Wallen border crossing
     const rl = inRedLight(player.pos.x, player.pos.z);

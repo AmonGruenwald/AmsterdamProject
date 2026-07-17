@@ -179,6 +179,30 @@
   #ds-pad .left { grid-area: left; } #ds-pad .right { grid-area: right; }
   #deslang.touch #ds-pad { display: grid; }
   #deslang.touch .hint.kb { display: none; }
+
+  /* ---- De Wallen dance-off ---- */
+  #dans {
+    position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%) scale(.9);
+    z-index: 15; text-align: center; padding: 14px 22px; border-radius: 14px;
+    background: rgba(22, 6, 14, .82); border: 1px solid rgba(255, 45, 111, .55);
+    box-shadow: 0 0 24px rgba(255, 45, 111, .35), inset 0 0 18px rgba(255, 45, 111, .12);
+    opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s;
+    color: #ffd7e4; font-family: "Segoe UI", system-ui, sans-serif;
+  }
+  #dans.open { opacity: 1; transform: translateX(-50%) scale(1); }
+  #dans h3 { margin: 0 0 8px; font-size: 15px; letter-spacing: 2px; color: #ff6fae; }
+  #dans-seq { display: flex; gap: 8px; justify-content: center; }
+  .dans-key {
+    width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
+    font-size: 22px; border-radius: 9px; background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.2); transition: all .12s;
+  }
+  .dans-key.active {
+    background: rgba(255, 45, 111, .4); border-color: #ff6fae;
+    box-shadow: 0 0 14px rgba(255, 45, 111, .8); transform: scale(1.18);
+  }
+  .dans-key.hit { background: rgba(57, 211, 83, .45); border-color: #39d353; color: #d9ffe3; }
+  .dans-key.miss { opacity: .35; }
 </style>
 </head>
 <body>
@@ -196,6 +220,11 @@
   <div class="stat"><span id="s-weather">☁️ cloudy</span></div>
 </div>
 <div class="hud" id="hud-msg"></div>
+
+<div id="dans">
+  <h3>💃 DANS MET HET RAAM</h3>
+  <div id="dans-seq"></div>
+</div>
 
 <div id="deslang">
   <button id="ds-exit">🚪 ← Back to the street</button>
@@ -290,7 +319,7 @@
      philosophical, duck into <b style="color:#39d353">Koffieshop De Slang</b>,
      where the city folds into an older, flatter Amsterdam.
      Mind the canals — the water accepts all bikes, and it will accept yours.</p>
-  <p class="keys">W/S ride &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; SPACE bell &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; E bus &nbsp;·&nbsp; B boat &nbsp;·&nbsp; F eat &nbsp;·&nbsp; T toilet &nbsp;·&nbsp; G koffieshop &nbsp;·&nbsp; C camera</p>
+  <p class="keys">W/S ride &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; SPACE bell &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; E bus &nbsp;·&nbsp; B boat &nbsp;·&nbsp; F eat &nbsp;·&nbsp; T toilet &nbsp;·&nbsp; G koffieshop &nbsp;·&nbsp; Q dance &nbsp;·&nbsp; C camera</p>
   <button id="start-btn">Start cycling</button>
   <p class="keys"><a href="./index.html" style="color:#ff8c42">🐍 Or play Amsterdam Snake →</a></p>
 </div>

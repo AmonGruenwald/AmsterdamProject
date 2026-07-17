@@ -16,6 +16,16 @@ const PALETTE = ['#7a3b2e', '#5d4037', '#2e3d33', '#3e2f2a', '#233140', '#6b4423
 // De Wallen: the stretch of the canal-30 quarter that glows after dark.
 export const REDLIGHT = { x1: 20, x2: 110, z1: 4, z2: 56, canal: 30 };
 
+// The inner city, where the koffieshop density approaches saturation.
+export const KOFFIE_ZONE = { x: 130, rows: [-48, -12, 12, 48] };
+
+const KOFFIE_NAMES = [
+  'DE GROENE REIGER', 'SPACE KAAS', 'DE DUBBELE WAFEL', 'PARADISE 020',
+  'DE SLAPENDE TULP', 'HET ZACHTE GRAS', 'COFFEESHOP RELAX', 'DE HOGE BRUG',
+  'GREEN LIGHT DISTRICT', 'DE TRAGE TRAM', 'WOLKENVELD', 'DE BLIJE FIETS',
+  'MELLOW MOLEN', 'DE VERGETEN SLEUTEL', 'CLOUD NEGEN', 'HET DERDE WIEL',
+];
+
 export function inRedLight(x, z) {
   return x > REDLIGHT.x1 && x < REDLIGHT.x2 && z > REDLIGHT.z1 && z < REDLIGHT.z2;
 }
@@ -134,7 +144,7 @@ function glowTexture() {
   return glowTex;
 }
 
-function makeHouse(rng, width, depth, redlight = false) {
+function makeHouse(rng, width, depth, redlight = false, koffie = false) {
   const floors = 3 + Math.floor(rng() * 3);        // 3–5 floors
   const height = floors * 3.2;
   const color = redlight ? '#241018' : PALETTE[Math.floor(rng() * PALETTE.length)];
@@ -214,6 +224,30 @@ function makeHouse(rng, width, depth, redlight = false) {
     }
   }
 
+  if (koffie) {
+    // ground floor converted to a koffieshop: green neon name, warm haze window
+    const name = KOFFIE_NAMES[Math.floor(rng() * KOFFIE_NAMES.length)];
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(Math.min(width - 0.4, 5.2), 0.7),
+      new THREE.MeshBasicMaterial({
+        map: neonTexture(name, rng() < 0.3 ? '#a4f79b' : '#39d353'), transparent: true,
+        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+      })
+    );
+    sign.position.set(0, 3.6, depth / 2 + 0.22);
+    sign.material.userData.phase = rng() * 20;
+    NEON_SIGN_MATS.push(sign.material);
+    const window_ = new THREE.Mesh(
+      new THREE.PlaneGeometry(Math.min(width - 1.2, 3.4), 1.9),
+      new THREE.MeshLambertMaterial({
+        color: '#9fdc8a', emissive: '#3f7a2c', emissiveIntensity: 0.7,
+        transparent: true, opacity: 0.92,
+      })
+    );
+    window_.position.set(0, 1.4, depth / 2 + 0.16);
+    group.add(sign, window_);
+  }
+
   // the famous forward lean
   group.rotation.x = (rng() - 0.35) * 0.03;
   return { group, height };
@@ -223,6 +257,7 @@ export function buildCity(scene, rng) {
   const W = WORLD;
   const colliders = []; // {x, z, hw, hd} AABBs (houses, trees)
   const redlightFronts = []; // {x, z, n} facade positions in De Wallen (n = outward normal sign on Z)
+  const koffieshopFronts = []; // {x, z, n} inner-city koffieshop doors
 
   // Ground: brick-toned pavement
   const ground = new THREE.Mesh(
@@ -298,7 +333,13 @@ export function buildCity(scene, rng) {
         const depth = 10 + rng() * 3;
         const redlight = cz === REDLIGHT.canal && cx > REDLIGHT.x1 && cx < REDLIGHT.x2;
         if (redlight) redlightFronts.push({ x: cx, z: rowZ, n: -side });
-        const { group } = makeHouse(rng, width, depth, redlight);
+        // the inner city: almost every remaining building is a koffieshop
+        const koffie = !redlight
+          && KOFFIE_ZONE.rows.includes(rowZ)
+          && Math.abs(cx) < KOFFIE_ZONE.x
+          && rng() < 0.85;
+        if (koffie) koffieshopFronts.push({ x: cx, z: rowZ, n: -side });
+        const { group } = makeHouse(rng, width, depth, redlight, koffie);
         group.position.set(cx, 0, rowZ + side * depth / 2);
         // windows face the canal
         if (side === 1) group.rotation.y = Math.PI;
@@ -375,7 +416,7 @@ export function buildCity(scene, rng) {
   scene.add(tower);
   colliders.push({ x: 37, z: -60, hw: 4.5, hd: 4.5 });
 
-  return { colliders, waters, redlightFronts };
+  return { colliders, waters, redlightFronts, koffieshopFronts };
 }
 
 // --- spatial queries -------------------------------------------------------

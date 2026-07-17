@@ -94,13 +94,19 @@ proxy for "the game loop is running".
 | `simulator.html` | Redirect stub for old links. Leave it. |
 | `src/deslang.js` | The entire 2D snake game as a native module (`DeSlang` class): grid logic, shop, particles, procedural audio, secret. Wallet comes from `main.js` callbacks. |
 | `src/koffieshop.js` | The De Slang storefront in the 3D city (`near()` gates the `G` interaction) and `plantTulips` for when the secret escapes. |
+
+Also: `city.js` marks ~85% of inner-city houses (`KOFFIE_ZONE`) as koffieshops
+(green neon + glowing window, fronts returned as `koffieshopFronts`). All of
+them open the same De Slang back room via `G` — this is a deliberate joke
+(`enteredVia` in main.js picks the exit toast). Don't give them separate
+interiors.
 | `src/main.js` | Bootstrap, game loop, HUD wiring, seeded RNG. Owns all cross-module wiring. |
 | `src/city.js` | Procedural city gen + spatial queries (`isOverWater`, `collide`, `WORLD` constants). De Wallen zone (`REDLIGHT`, `inRedLight`) and its neon/facade dressing. |
 | `src/player.js` | Player bike model, arcade physics, canal-dunk handling, chase camera. |
 | `src/npcs.js` | NPC cyclists, tourists (bell-scatter logic), canal boats, the tram. |
 | `src/transit.js` | Buses, bus stops, and the QR ticket scanner (50% success rate — this is intentional satire, do not "fix" it). Boarding/riding/alighting state machine. |
 | `src/cuisine.js` | Snack carts, krul urinoirs, and the `Survival` meters (hunger → hongerklop slowdown via `player.speedFactor`; bowels → the inevitable). |
-| `src/wallen.js` | De Wallen inhabitants: window dancers (with twirls), heart-particle kisses, charm streaks, water shimmer, and `WallenMuziek` — the district's procedural Web Audio groove (init needs a user gesture; main.js calls it from the start button). |
+| `src/wallen.js` | De Wallen inhabitants: window dancers (with twirls), heart-particle kisses, charm streaks, water shimmer, `WallenMuziek` — the district's procedural Web Audio groove (init needs a user gesture; main.js calls it from the start button) — and the `Q` dance-off minigame (beat clock locked to `DANCE_BEAT` = the muziek tempo; DOM strip is `#dans` in index.html; rewards wired via `onDanceEnd`). |
 | `src/boating.js` | Sloop rental docks, player boat driving (canal-clamped, ducks under bridges), narrated tours with a stroopwafel payout. Sets `player.external` while driving — see below. |
 | `src/weather.js` | Markov-chain weather + rain particles; `DayCycle` for sun/sky/clock. |
 | `src/pickups.js` | Stroopwafel spawning/collection. |
